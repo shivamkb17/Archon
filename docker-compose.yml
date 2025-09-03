@@ -11,6 +11,7 @@
 services:
   # Server Service (FastAPI + Socket.IO + Crawling)
   archon-server:
+    profiles: ["backend", "full"]
     build:
       context: ./python
       dockerfile: Dockerfile.server
@@ -65,6 +66,7 @@ services:
 
   # Lightweight MCP Server Service (HTTP-based)
   archon-mcp:
+    profiles: ["backend", "full"]
     build:
       context: ./python
       dockerfile: Dockerfile.mcp
@@ -109,6 +111,7 @@ services:
 
   # AI Agents Service (ML/Reranking)
   archon-agents:
+    profiles: ["backend", "full"]
     build:
       context: ./python
       dockerfile: Dockerfile.agents
@@ -143,6 +146,7 @@ services:
 
   # Frontend
   archon-frontend:
+    profiles: ["frontend", "full"]
     build: ./archon-ui-main
     container_name: archon-ui
     ports:

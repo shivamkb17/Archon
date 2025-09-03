@@ -158,7 +158,7 @@ export const ModelStatusBar: React.FC = () => {
             <span className="text-xs font-medium text-gray-300">Models:</span>
           </div>
           
-          {Object.entries(modelStatus.active_models)
+          {modelStatus.active_models && Object.entries(modelStatus.active_models)
             .filter(([service]) => {
               // Only show services that are defined in our agent registry
               return AGENT_CONFIGS[service] !== undefined;

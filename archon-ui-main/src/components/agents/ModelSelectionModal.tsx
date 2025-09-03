@@ -135,9 +135,11 @@ export const ModelSelectionModal: React.FC<ModelSelectionModalProps> = ({
 
     // Filter compatible models if agent type specified
     if (agent?.modelType === 'embedding') {
-      filtered = filtered.filter(m => m.model_string.includes('embedding'));
+      // Use the is_embedding flag if available, otherwise fall back to string check
+      filtered = filtered.filter(m => m.is_embedding || m.model_string.includes('embedding'));
     } else if (agent) {
-      filtered = filtered.filter(m => !m.model_string.includes('embedding'));
+      // For LLM models, exclude embedding models
+      filtered = filtered.filter(m => !m.is_embedding && !m.model_string.includes('embedding'));
     }
 
     // Search filter

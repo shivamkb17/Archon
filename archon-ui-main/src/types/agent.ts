@@ -146,6 +146,92 @@ export const AGENT_CONFIGS: Record<string, AgentConfig> = {
     defaultModel: 'openai:gpt-3.5-turbo',
     modelType: 'llm',
     costProfile: 'low'
+  },
+
+  // Additional backend services
+  llm_primary: {
+    id: 'llm_primary',
+    name: 'Primary LLM',
+    icon: '🧠',
+    description: 'Primary language model for general tasks',
+    category: 'service',
+    supportsTemperature: true,
+    supportsMaxTokens: true,
+    defaultModel: 'openai:gpt-4o',
+    modelType: 'llm',
+    costProfile: 'high'
+  },
+  llm_secondary: {
+    id: 'llm_secondary',
+    name: 'Secondary LLM',
+    icon: '🤖',
+    description: 'Secondary language model for backup tasks',
+    category: 'service',
+    supportsTemperature: true,
+    supportsMaxTokens: true,
+    defaultModel: 'openai:gpt-4o-mini',
+    modelType: 'llm',
+    costProfile: 'medium'
+  },
+  embedding: {
+    id: 'embedding',
+    name: 'Legacy Embedding',
+    icon: '📐',
+    description: 'Legacy embedding service',
+    category: 'service',
+    supportsTemperature: false,
+    supportsMaxTokens: false,
+    defaultModel: 'openai:text-embedding-ada-002',
+    modelType: 'embedding',
+    costProfile: 'low'
+  },
+  summary_generation: {
+    id: 'summary_generation',
+    name: 'Summary Generator',
+    icon: '📝',
+    description: 'Generates summaries and abstracts',
+    category: 'service',
+    supportsTemperature: true,
+    supportsMaxTokens: true,
+    defaultModel: 'openai:gpt-4o-mini',
+    modelType: 'llm',
+    costProfile: 'medium'
+  },
+  chat_agent: {
+    id: 'chat_agent',
+    name: 'Chat Agent',
+    icon: '💬',
+    description: 'Interactive chat and conversation agent',
+    category: 'agent',
+    supportsTemperature: true,
+    supportsMaxTokens: true,
+    defaultModel: 'openai:gpt-4o',
+    modelType: 'llm',
+    costProfile: 'high'
+  },
+  code_agent: {
+    id: 'code_agent',
+    name: 'Code Agent',
+    icon: '👨‍💻',
+    description: 'Specialized agent for code generation and analysis',
+    category: 'agent',
+    supportsTemperature: true,
+    supportsMaxTokens: true,
+    defaultModel: 'anthropic:claude-3-5-sonnet-20241022',
+    modelType: 'llm',
+    costProfile: 'high'
+  },
+  vision_agent: {
+    id: 'vision_agent',
+    name: 'Vision Agent',
+    icon: '👁️',
+    description: 'Processes and understands visual content',
+    category: 'agent',
+    supportsTemperature: true,
+    supportsMaxTokens: true,
+    defaultModel: 'openai:gpt-4o',
+    modelType: 'llm',
+    costProfile: 'high'
   }
 };
 

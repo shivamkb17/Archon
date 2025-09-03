@@ -23,7 +23,7 @@ import type {
   ProviderHealth
 } from '../types/cleanProvider';
 
-// API base path (no /api prefix since apiRequest adds it)
+// API base path - provider routes now include the /api prefix
 const API_BASE = '/providers';
 
 class CleanProviderService {
@@ -71,7 +71,7 @@ class CleanProviderService {
    * Get status of all configured services
    */
   async getServiceStatus(): Promise<ServiceStatus[]> {
-    return apiRequest<ServiceStatus[]>(`${API_BASE}/models/status`);
+    return apiRequest<ServiceStatus[]>(`${API_BASE}/status`);
   }
 
   /**
@@ -257,8 +257,54 @@ class CleanProviderService {
     };
     timestamp: string;
   }> {
-    const response = await apiRequest(`${API_BASE}/active-models`);
-    return response;
+    try {
+      // Get service status and active providers
+      const [statusResponse, activeProviders] = await Promise.all([
+        apiRequest<ServiceStatus[]>(`${API_BASE}/status`),
+        this.getActiveProviders()
+      ]);
+
+      // Transform the status response to match expected format
+      const active_models: Record<string, {
+        model_string: string;
+        provider: string;
+        model: string;
+        api_key_configured: boolean;
+        is_default?: boolean;
+      }> = {};
+
+      const api_key_status: Record<string, boolean> = {};
+
+      // Process service status into active_models
+      for (const status of statusResponse) {
+        active_models[status.service_name] = {
+          model_string: status.model_string,
+          provider: status.provider,
+          model: status.model,
+          api_key_configured: status.api_key_configured,
+          is_default: false
+        };
+      }
+
+      // Process active providers into api_key_status
+      for (const provider of activeProviders) {
+        api_key_status[provider] = true;
+      }
+
+      return {
+        active_models,
+        api_key_status,
+        usage: {
+          total_tokens_today: 0,
+          total_cost_today: 0,
+          estimated_monthly_cost: 0
+        },
+        timestamp: new Date().toISOString()
+      };
+    } catch (error) {
+      console.error('[CleanProviderService] Failed to get active models:', error);
+      throw error;
+    }
   }
 
   /**
