@@ -220,3 +220,129 @@ class IUsageRepository(ABC):
             Estimated monthly cost
         """
         pass
+
+
+class IAvailableModelsRepository(ABC):
+    """Repository interface for managing available AI models."""
+    
+    @abstractmethod
+    async def get_all_models(self, active_only: bool = True) -> List[Dict[str, Any]]:
+        """Get all available models.
+        
+        Args:
+            active_only: If True, only return active models
+            
+        Returns:
+            List of model dictionaries
+        """
+        pass
+    
+    @abstractmethod
+    async def get_models_by_provider(self, provider: str, active_only: bool = True) -> List[Dict[str, Any]]:
+        """Get models for a specific provider.
+        
+        Args:
+            provider: Provider name (e.g., 'openai')
+            active_only: If True, only return active models
+            
+        Returns:
+            List of model dictionaries for the provider
+        """
+        pass
+    
+    @abstractmethod
+    async def get_models_by_type(self, is_embedding: bool = False, active_only: bool = True) -> List[Dict[str, Any]]:
+        """Get models filtered by type.
+        
+        Args:
+            is_embedding: If True, get embedding models; if False, get LLM models
+            active_only: If True, only return active models
+            
+        Returns:
+            List of filtered model dictionaries
+        """
+        pass
+    
+    @abstractmethod
+    async def get_model_by_string(self, model_string: str) -> Optional[Dict[str, Any]]:
+        """Get a specific model by its model string.
+        
+        Args:
+            model_string: Model string (e.g., 'openai:gpt-4o')
+            
+        Returns:
+            Model dictionary or None if not found
+        """
+        pass
+    
+    @abstractmethod
+    async def sync_model(self, model_data: Dict[str, Any]) -> str:
+        """Sync (upsert) a model to the database.
+        
+        Args:
+            model_data: Dictionary containing all model information
+            
+        Returns:
+            Model ID (UUID) of the synced model
+        """
+        pass
+    
+    @abstractmethod
+    async def bulk_sync_models(self, models_data: List[Dict[str, Any]], source: str = 'openrouter') -> int:
+        """Sync multiple models in a batch operation.
+        
+        Args:
+            models_data: List of model dictionaries to sync
+            source: Source of the models (e.g., 'openrouter', 'manual')
+            
+        Returns:
+            Number of models successfully synced
+        """
+        pass
+    
+    @abstractmethod
+    async def deactivate_stale_models(self, source: str = 'openrouter', sync_time: Optional[datetime] = None) -> int:
+        """Mark models as inactive if they weren't updated in the latest sync.
+        
+        Args:
+            source: Source to check (e.g., 'openrouter')
+            sync_time: Time of the sync (default: now)
+            
+        Returns:
+            Number of models marked as inactive
+        """
+        pass
+    
+    @abstractmethod
+    async def set_model_active(self, model_string: str, is_active: bool = True) -> bool:
+        """Manually activate or deactivate a model.
+        
+        Args:
+            model_string: Model string (e.g., 'openai:gpt-4o')
+            is_active: Whether to activate or deactivate
+            
+        Returns:
+            True if updated, False if model not found
+        """
+        pass
+    
+    @abstractmethod
+    async def get_provider_statistics(self) -> Dict[str, Dict[str, Any]]:
+        """Get aggregated statistics for each provider.
+        
+        Returns:
+            Dictionary mapping provider names to their statistics
+        """
+        pass
+    
+    @abstractmethod
+    async def get_providers_with_api_keys(self, api_key_providers: List[str]) -> List[Dict[str, Any]]:
+        """Get models from providers that have API keys configured.
+        
+        Args:
+            api_key_providers: List of provider names with configured API keys
+            
+        Returns:
+            List of model dictionaries from providers with API keys
+        """
+        pass

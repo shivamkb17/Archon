@@ -1,5 +1,6 @@
 """Refactored provider routes using the new repository-based architecture."""
 
+import logging
 from typing import List, Dict, Optional, Any
 from datetime import datetime
 from decimal import Decimal
@@ -8,20 +9,20 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, SecretStr
 
 # Import new services and dependencies
-from ..infrastructure.dependencies import get_unit_of_work
+from ..infrastructure.dependencies import get_unit_of_work, get_model_sync_service
 from ..core.interfaces.unit_of_work import IUnitOfWork
 from ..services import (
     ModelConfigService,
     APIKeyService,
     UsageService,
-    ModelConfig
+    ModelConfig,
+    ModelSyncService
 )
 
-# Import existing models and services for compatibility
-from ..models.openrouter_models import OpenRouterService, ProviderModel
-from ..embedding_models import EmbeddingModelService
+# Models and services are now managed through database - legacy imports removed
 
 router = APIRouter(prefix="/api/providers", tags=["providers"])
+logger = logging.getLogger(__name__)
 
 
 # ==================== Request/Response Models ====================
@@ -349,114 +350,62 @@ async def track_usage(
 
 @router.get("/models/available", response_model=List[AvailableModel])
 async def get_available_models(
-    key_service: APIKeyService = Depends(get_key_service)
+    key_service: APIKeyService = Depends(get_key_service),
+    sync_service: ModelSyncService = Depends(get_model_sync_service)
 ):
-    """Get list of available models based on configured API keys"""
+    """Get list of available models from database, filtered by configured API keys"""
     try:
+        # Get active providers with API keys
         active_providers = await key_service.get_active_providers()
+        
+        # Always include ollama as it doesn't need API keys
+        all_providers = list(set(active_providers + ['ollama']))
+        
+        # Note: Removed automatic sync on API call to prevent database spam
+        # Use the dedicated /models/sync endpoint or background scheduler for syncing
+        
+        # Get models from database for providers with API keys
+        async with sync_service.uow as uow:
+            db_models = await uow.available_models.get_providers_with_api_keys(all_providers)
+        
+        # Convert database format to API response format
         available_models = []
-        
-        # Get models from OpenRouter data
-        all_provider_models = OpenRouterService.get_all_providers()
-        
-        # Add common Ollama models if not in OpenRouter data
-        if 'ollama' not in all_provider_models:
-            all_provider_models['ollama'] = [
-                ProviderModel(
-                    provider='ollama',
-                    model_id='llama3',
-                    display_name='Llama 3 (Local)',
-                    description='Local Llama 3 model',
-                    context_length=8192,
-                    input_cost=0,
-                    output_cost=0,
-                    is_free=True
-                ),
-                ProviderModel(
-                    provider='ollama',
-                    model_id='mistral',
-                    display_name='Mistral (Local)',
-                    description='Local Mistral model',
-                    context_length=8192,
-                    input_cost=0,
-                    output_cost=0,
-                    is_free=True
-                )
-            ]
-        
-        # Process models for active providers
-        for provider in active_providers:
-            if provider in all_provider_models:
-                for model in all_provider_models[provider]:  # Show all available models
-                    model_string = f"{provider}:{model.model_id}"
-                    
-                    # Determine cost tier
-                    if model.is_free:
-                        cost_tier = 'free'
-                    elif model.input_cost < 0.5:
-                        cost_tier = 'low'
-                    elif model.input_cost < 5:
-                        cost_tier = 'medium'
-                    else:
-                        cost_tier = 'high'
-                    
-                    available_models.append(AvailableModel(
-                        provider=provider,
-                        model=model.model_id,
-                        model_string=model_string,
-                        display_name=model.display_name,
-                        has_api_key=provider != 'ollama',
-                        cost_tier=cost_tier,
-                        estimated_cost_per_1k={
-                            'input': model.input_cost / 1000,
-                            'output': model.output_cost / 1000
-                        } if not model.is_free else None,
-                        description=model.description,
-                        context_length=model.context_length,
-                        input_cost=model.input_cost,
-                        output_cost=model.output_cost,
-                        supports_vision=model.supports_vision,
-                        supports_tools=model.supports_tools,
-                        supports_reasoning=model.supports_reasoning
-                    ))
-        
-        # Add embedding models
-        api_key_status = {p: True for p in active_providers}
-        embedding_models = EmbeddingModelService.get_available_models(api_key_status)
-        
-        for emb_model in embedding_models:  # Show all available embedding models
-            # Determine cost tier
-            if emb_model.cost_per_million_tokens == 0:
-                cost_tier = 'free'
-            elif emb_model.cost_per_million_tokens < 0.05:
-                cost_tier = 'low'
-            elif emb_model.cost_per_million_tokens < 0.15:
-                cost_tier = 'medium'
-            else:
-                cost_tier = 'high'
+        for db_model in db_models:
+            # Determine has_api_key status
+            has_api_key = db_model['provider'] in active_providers or db_model['provider'] == 'ollama'
+            
+            # Calculate estimated cost per 1k tokens for display
+            estimated_cost_per_1k = None
+            if db_model['input_cost'] and db_model['input_cost'] > 0:
+                estimated_cost_per_1k = {
+                    'input': float(db_model['input_cost']) * 1000,  # Convert per-token to per-1k
+                    'output': float(db_model['output_cost'] or 0) * 1000
+                }
             
             available_models.append(AvailableModel(
-                provider=emb_model.provider,
-                model=emb_model.model_id,
-                model_string=emb_model.model_string,
-                display_name=emb_model.name,
-                has_api_key=True,
-                cost_tier=cost_tier,
-                estimated_cost_per_1k={
-                    'input': emb_model.cost_per_million_tokens / 1000000,
-                    'output': 0
-                } if emb_model.cost_per_million_tokens > 0 else None,
-                is_embedding=True,
-                model_id=emb_model.model_id,
-                description=f"Embedding model with {emb_model.dimensions} dimensions",
-                context_length=emb_model.max_tokens,
-                input_cost=emb_model.cost_per_million_tokens / 1000000,
-                output_cost=0
+                provider=db_model['provider'],
+                model=db_model['model_id'],
+                model_string=db_model['model_string'],
+                display_name=db_model['display_name'],
+                has_api_key=has_api_key,
+                cost_tier=db_model['cost_tier'],
+                estimated_cost_per_1k=estimated_cost_per_1k,
+                is_embedding=db_model['is_embedding'],
+                model_id=db_model['model_id'],
+                description=db_model['description'],
+                context_length=db_model['context_length'],
+                input_cost=float(db_model['input_cost']) * 1_000_000 if db_model['input_cost'] else 0,  # Convert to per-1M for compatibility
+                output_cost=float(db_model['output_cost']) * 1_000_000 if db_model['output_cost'] else 0,
+                supports_vision=db_model['supports_vision'],
+                supports_tools=db_model['supports_tools'],
+                supports_reasoning=db_model['supports_reasoning']
             ))
         
+        logger.info(f"Returned {len(available_models)} models from database for {len(all_providers)} providers")
         return available_models
         
     except Exception as e:
+        logger.error(f"Failed to get available models: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get available models: {str(e)}"
@@ -520,4 +469,123 @@ async def initialize_provider_system(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to initialize provider system: {str(e)}"
+        )
+
+
+# ==================== Model Sync Management Endpoints ====================
+
+@router.post("/models/sync")
+async def sync_models_from_sources(
+    force_refresh: bool = False,
+    sync_service: ModelSyncService = Depends(get_model_sync_service)
+):
+    """Manually trigger a sync of all models from external sources"""
+    try:
+        result = await sync_service.full_sync(force_refresh=force_refresh)
+        return result
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to sync models: {str(e)}"
+        )
+
+
+@router.get("/models/sync/status")
+async def get_models_sync_status(
+    sync_service: ModelSyncService = Depends(get_model_sync_service)
+):
+    """Get the current model sync status and statistics"""
+    try:
+        status = await sync_service.get_sync_status()
+        return status
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get sync status: {str(e)}"
+        )
+
+
+@router.post("/models/{model_string}/activate")
+async def activate_model(
+    model_string: str,
+    sync_service: ModelSyncService = Depends(get_model_sync_service)
+):
+    """Manually activate a model"""
+    try:
+        # Decode URL-encoded model string (e.g., openai%3Agpt-4o -> openai:gpt-4o)
+        import urllib.parse
+        decoded_model_string = urllib.parse.unquote(model_string)
+        
+        result = await sync_service.reactivate_model(decoded_model_string)
+        if result:
+            return {"status": "success", "model": decoded_model_string}
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Model not found: {decoded_model_string}"
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to activate model: {str(e)}"
+        )
+
+
+@router.post("/models/{model_string}/deactivate")
+async def deactivate_model(
+    model_string: str,
+    sync_service: ModelSyncService = Depends(get_model_sync_service)
+):
+    """Manually deactivate a model"""
+    try:
+        # Decode URL-encoded model string
+        import urllib.parse
+        decoded_model_string = urllib.parse.unquote(model_string)
+        
+        result = await sync_service.deactivate_model(decoded_model_string)
+        if result:
+            return {"status": "success", "model": decoded_model_string}
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Model not found: {decoded_model_string}"
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to deactivate model: {str(e)}"
+        )
+
+
+@router.post("/models/initialize")
+async def initialize_models_database(
+    force_refresh: bool = False,
+    sync_service: ModelSyncService = Depends(get_model_sync_service)
+):
+    """Initialize the models database with data from external sources"""
+    try:
+        logger.info("Initializing models database...")
+        
+        # Perform initial sync to populate database
+        result = await sync_service.full_sync(force_refresh=force_refresh)
+        
+        # Get final counts
+        status = await sync_service.get_sync_status()
+        
+        return {
+            "status": "initialized",
+            "sync_result": result,
+            "total_models": status.get('active_models', 0),
+            "providers": len(status.get('providers', {})),
+            "message": "Models database initialized successfully"
+        }
+    except Exception as e:
+        logger.error(f"Failed to initialize models database: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to initialize models database: {str(e)}"
         )

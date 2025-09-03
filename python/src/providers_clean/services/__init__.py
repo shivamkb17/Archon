@@ -3,10 +3,16 @@
 from .model_config_service import ModelConfigService, ModelConfig
 from .api_key_service import APIKeyService
 from .usage_service import UsageService
+from .model_sync_service import ModelSyncService
+from .background_sync_service import BackgroundModelSync, start_background_model_sync, stop_background_model_sync
 
 __all__ = [
     "ModelConfigService",
-    "ModelConfig",
+    "ModelConfig", 
     "APIKeyService",
-    "UsageService"
+    "UsageService",
+    "ModelSyncService",
+    "BackgroundModelSync",
+    "start_background_model_sync",
+    "stop_background_model_sync"
 ]

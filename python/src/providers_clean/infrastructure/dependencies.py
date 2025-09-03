@@ -11,13 +11,15 @@ from ..core.interfaces.unit_of_work import IUnitOfWork
 from ..core.interfaces.repositories import (
     IModelConfigRepository,
     IApiKeyRepository,
-    IUsageRepository
+    IUsageRepository,
+    IAvailableModelsRepository
 )
 from .unit_of_work import SupabaseUnitOfWork
 from .repositories.supabase import (
     SupabaseModelConfigRepository,
     SupabaseApiKeyRepository,
-    SupabaseUsageRepository
+    SupabaseUsageRepository,
+    SupabaseAvailableModelsRepository
 )
 
 
@@ -175,3 +177,16 @@ class DependencyContainer:
         self._supabase_client = None
         self._cipher = None
         self._uow = None
+
+
+def get_model_sync_service(uow: IUnitOfWork = Depends(get_unit_of_work)):
+    """Get model sync service for managing available models.
+    
+    Args:
+        uow: Unit of Work instance
+        
+    Returns:
+        ModelSyncService instance
+    """
+    from ..services.model_sync_service import ModelSyncService
+    return ModelSyncService(uow)
