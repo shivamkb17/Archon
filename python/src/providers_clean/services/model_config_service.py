@@ -18,15 +18,6 @@ class ModelConfig(BaseModel):
 class ModelConfigService:
     """Service for managing model configurations using repository pattern."""
     
-    DEFAULT_MODELS = {
-        "rag_agent": "openai:gpt-4o-mini",
-        "document_agent": "anthropic:claude-3-haiku-20240307",
-        "embeddings": "openai:text-embedding-3-small",
-        "chat_agent": "openai:gpt-4o",
-        "code_agent": "anthropic:claude-3-5-sonnet-20241022",
-        "vision_agent": "openai:gpt-4o"
-    }
-    
     VALID_PROVIDERS = [
         "openai", "anthropic", "google", "groq", "mistral", 
         "cohere", "ai21", "replicate", "together", "fireworks",
@@ -52,18 +43,9 @@ class ModelConfigService:
         """
         async with self.uow:
             config = await self.uow.model_configs.get_config(service_name)
-            
-            if config:
-                return ModelConfig(**config)
-            
-            # Return default configuration if not found
-            default_model = self.DEFAULT_MODELS.get(service_name, "openai:gpt-4o-mini")
-            return ModelConfig(
-                service_name=service_name,
-                model_string=default_model,
-                temperature=0.7,
-                max_tokens=None
-            )
+            if not config:
+                raise ValueError(f"Configuration not found for service '{service_name}'")
+            return ModelConfig(**config)
     
     async def set_model_config(
         self,
@@ -110,12 +92,6 @@ class ModelConfigService:
         """
         async with self.uow:
             configs = await self.uow.model_configs.get_all_configs()
-            
-            # Add defaults for any missing services
-            for service, default_model in self.DEFAULT_MODELS.items():
-                if service not in configs:
-                    configs[service] = default_model
-            
             return configs
     
     async def delete_config(self, service_name: str) -> bool:

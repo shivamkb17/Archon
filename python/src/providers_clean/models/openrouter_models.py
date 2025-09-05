@@ -139,6 +139,18 @@ class OpenRouterService:
                 return OpenRouterResponse(**data)
         except Exception:
             return None
+
+    @classmethod
+    def _load_cache_ignore_age(cls) -> Optional[OpenRouterResponse]:
+        """Load cached models regardless of age (fallback if network fails)."""
+        try:
+            if not cls.CACHE_FILE.exists():
+                return None
+            with open(cls.CACHE_FILE, 'r') as f:
+                data = json.load(f)
+                return OpenRouterResponse(**data)
+        except Exception:
+            return None
     
     @classmethod
     def _save_cache(cls, response: OpenRouterResponse) -> None:
@@ -176,13 +188,19 @@ class OpenRouterService:
             return cached
             
         # Fetch from API
-        with httpx.Client() as client:
-            response = client.get("https://openrouter.ai/api/v1/models")
-            response.raise_for_status()
-            
-            data = OpenRouterResponse(**response.json())
-            cls._save_cache(data)
-            return data
+        try:
+            with httpx.Client() as client:
+                response = client.get("https://openrouter.ai/api/v1/models")
+                response.raise_for_status()
+                data = OpenRouterResponse(**response.json())
+                cls._save_cache(data)
+                return data
+        except Exception:
+            # Fallback to stale cache if available
+            cached_any = cls._load_cache_ignore_age()
+            if cached_any:
+                return cached_any
+            raise
     
     @classmethod
     def parse_provider_from_id(cls, model_id: str) -> str:

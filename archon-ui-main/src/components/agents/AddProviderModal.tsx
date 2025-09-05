@@ -36,6 +36,7 @@ interface AddProviderModalProps {
   onProviderAdded: () => void;
   existingProviders: string[];
   providersMetadata: Record<string, ProviderMetadata>;
+  availableProviders: string[]; // DB-provided provider list
 }
 
 export const AddProviderModal: React.FC<AddProviderModalProps> = ({
@@ -43,7 +44,8 @@ export const AddProviderModal: React.FC<AddProviderModalProps> = ({
   onClose,
   onProviderAdded,
   existingProviders,
-  providersMetadata
+  providersMetadata,
+  availableProviders
 }) => {
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState('');
@@ -157,8 +159,8 @@ export const AddProviderModal: React.FC<AddProviderModalProps> = ({
 
   // Filter available providers based on backend metadata
   const filteredProviders = useMemo(() => {
-    // Get all providers from metadata
-    const allProviderKeys = Object.keys(providersMetadata);
+    // Only use providers from the database - no hardcoded fallbacks
+    const allProviderKeys = availableProviders || [];
 
     if (!searchQuery) return allProviderKeys;
 
@@ -178,7 +180,7 @@ export const AddProviderModal: React.FC<AddProviderModalProps> = ({
         (metadata && metadata.provider.toLowerCase().includes(query))
       );
     });
-  }, [searchQuery, providersMetadata]);
+  }, [searchQuery, providersMetadata, availableProviders]);
 
   // Get metadata for selected provider
   const selectedProviderMeta = useMemo(() => {
@@ -206,8 +208,9 @@ export const AddProviderModal: React.FC<AddProviderModalProps> = ({
       await cleanProviderService.setApiKey(selectedProvider, apiKey.trim());
       
       const isUpdate = existingProviders.includes(selectedProvider);
+      const providerName = providerInfo[selectedProvider]?.name || selectedProvider.charAt(0).toUpperCase() + selectedProvider.slice(1);
       showToast(
-        `${providerInfo[selectedProvider].name} ${isUpdate ? 'updated' : 'added'} successfully`, 
+        `${providerName} ${isUpdate ? 'updated' : 'added'} successfully`, 
         'success'
       );
       onProviderAdded();
@@ -426,7 +429,7 @@ export const AddProviderModal: React.FC<AddProviderModalProps> = ({
                   type={showApiKey ? 'text' : 'password'}
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
-                  placeholder={providerInfo[selectedProvider].apiKeyPlaceholder}
+                  placeholder={providerInfo[selectedProvider]?.apiKeyPlaceholder || 'Enter API key'}
                   className="w-full pl-10 pr-10 py-2 text-sm bg-zinc-800 text-white rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-500"
                 />
                 <button
@@ -437,9 +440,9 @@ export const AddProviderModal: React.FC<AddProviderModalProps> = ({
                 </button>
               </div>
               
-              {providerInfo[selectedProvider].apiKeyUrl && (
+              {providerInfo[selectedProvider]?.apiKeyUrl && (
                 <a
-                  href={providerInfo[selectedProvider].apiKeyUrl}
+                  href={providerInfo[selectedProvider]?.apiKeyUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 mt-2 text-xs text-purple-400 hover:text-purple-300"

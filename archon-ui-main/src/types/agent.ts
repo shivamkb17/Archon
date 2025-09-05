@@ -235,10 +235,25 @@ export const AGENT_CONFIGS: Record<string, AgentConfig> = {
   }
 };
 
-// Helper to get agents only
-export const getAgents = () => 
-  Object.values(AGENT_CONFIGS).filter(c => c.category === 'agent');
+// =====================================================
+// LEGACY HELPER FUNCTIONS - DEPRECATED
+// =====================================================
+// These functions are deprecated. Use useServiceRegistry() hook instead:
+// - useServiceRegistry().agents (replaces getAgents())
+// - useServiceRegistry().backendServices (replaces getServices())
 
-// Helper to get services only  
-export const getServices = () =>
-  Object.values(AGENT_CONFIGS).filter(c => c.category === 'service');
+/**
+ * @deprecated Use useServiceRegistry().agents instead
+ */
+export const getAgents = () => {
+  console.warn('getAgents() is deprecated. Use useServiceRegistry().agents instead.');
+  return [];
+};
+
+/**
+ * @deprecated Use useServiceRegistry().backendServices instead
+ */
+export const getServices = () => {
+  console.warn('getServices() is deprecated. Use useServiceRegistry().backendServices instead.');
+  return [];
+};

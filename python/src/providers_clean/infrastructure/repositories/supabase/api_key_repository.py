@@ -43,11 +43,11 @@ class SupabaseApiKeyRepository(IApiKeyRepository):
                 "headers": metadata if metadata and "base_url" not in metadata else None
             }
             
-            # Check if key already exists for provider
-            existing = await self.get_key(provider)
+            # Check if ANY record exists for provider (active or inactive)
+            existing_check = self.db.table(self.table_name).select("provider").eq("provider", provider).execute()
             
-            if existing:
-                # Update existing key
+            if existing_check.data:
+                # Update existing key (reactivate if needed)
                 response = self.db.table(self.table_name).update({
                     "encrypted_key": encrypted_key,
                     "is_active": True,
@@ -132,12 +132,13 @@ class SupabaseApiKeyRepository(IApiKeyRepository):
         try:
             response = self.db.table(self.table_name).update({
                 "is_active": False,
-                "deactivated_at": datetime.utcnow().isoformat()
+                "updated_at": datetime.utcnow().isoformat()
             }).eq("provider", provider).eq("is_active", True).execute()
             
             return len(response.data) > 0 if response.data else False
             
-        except Exception:
+        except Exception as e:
+            print(f"Error deactivating key for {provider}: {e}")
             return False
     
     async def rotate_key(self, provider: str, new_encrypted_key: str) -> bool:

@@ -346,3 +346,92 @@ class IAvailableModelsRepository(ABC):
             List of model dictionaries from providers with API keys
         """
         pass
+
+
+class IServiceRegistryRepository(ABC):
+    """Repository interface for managing service registry."""
+    
+    @abstractmethod
+    async def get_all_services(self, active_only: bool = True) -> List[Dict[str, Any]]:
+        """Get all services from the registry.
+        
+        Args:
+            active_only: If True, only return active services
+            
+        Returns:
+            List of service dictionaries
+        """
+        pass
+    
+    @abstractmethod
+    async def get_service(self, service_name: str) -> Optional[Dict[str, Any]]:
+        """Get a specific service by name.
+        
+        Args:
+            service_name: Name of the service
+            
+        Returns:
+            Service dictionary or None if not found
+        """
+        pass
+    
+    @abstractmethod
+    async def register_service(self, service_data: Dict[str, Any]) -> str:
+        """Register or update a service in the registry.
+        
+        Args:
+            service_data: Dictionary containing service information
+            
+        Returns:
+            Service ID (UUID) of the registered service
+        """
+        pass
+    
+    @abstractmethod
+    async def update_service_metadata(self, service_name: str, metadata: Dict[str, Any]) -> bool:
+        """Update metadata for a service.
+        
+        Args:
+            service_name: Name of the service
+            metadata: Dictionary with metadata to update
+            
+        Returns:
+            True if updated successfully
+        """
+        pass
+    
+    @abstractmethod
+    async def deprecate_service(self, service_name: str, reason: str, replacement: Optional[str] = None) -> bool:
+        """Mark a service as deprecated.
+        
+        Args:
+            service_name: Name of service to deprecate
+            reason: Reason for deprecation
+            replacement: Optional replacement service
+            
+        Returns:
+            True if deprecated successfully
+        """
+        pass
+    
+    @abstractmethod
+    async def get_services_by_category(self, category: str, active_only: bool = True) -> List[Dict[str, Any]]:
+        """Get services filtered by category.
+        
+        Args:
+            category: Category ('agent' or 'service')
+            active_only: If True, only return active services
+            
+        Returns:
+            List of service dictionaries
+        """
+        pass
+    
+    @abstractmethod
+    async def get_unregistered_services(self) -> List[Dict[str, Any]]:
+        """Get services that have configurations but no registry entries.
+        
+        Returns:
+            List of unregistered service information
+        """
+        pass

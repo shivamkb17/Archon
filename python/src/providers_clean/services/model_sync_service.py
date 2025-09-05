@@ -46,16 +46,35 @@ class ModelSyncService:
             models_to_sync = []
             
             for provider_name, provider_models in all_providers.items():
+                logger.info(f"Processing {provider_name}: {len(provider_models)} models")
                 for model in provider_models:
-                    model_data = self._convert_provider_model_to_dict(model)
-                    models_to_sync.append(model_data)
+                    try:
+                        model_data = self._convert_provider_model_to_dict(model)
+                        models_to_sync.append(model_data)
+                    except Exception as conv_error:
+                        logger.error(f"Failed to convert model {model.model_id}: {conv_error}")
+            
+            logger.info(f"Converted {len(models_to_sync)} models for database sync")
             
             # Perform bulk sync using the repository
             async with self.uow as uow:
-                sync_count = await uow.available_models.bulk_sync_models(
-                    models_to_sync, 
-                    source='openrouter'
-                )
+                try:
+                    sync_count = await uow.available_models.bulk_sync_models(
+                        models_to_sync, 
+                        source='openrouter'
+                    )
+                    logger.info(f"Database bulk_sync_models returned: {sync_count}")
+                except Exception as db_error:
+                    logger.error(f"Database sync failed: {db_error}", exc_info=True)
+                    # Return error status instead of swallowing the exception
+                    return {
+                        'status': 'error',
+                        'error': f'Database sync failed: {str(db_error)}',
+                        'models_synced': 0,
+                        'models_deactivated': 0,
+                        'sync_duration_seconds': (datetime.now() - start_time).total_seconds(),
+                        'sync_time': start_time.isoformat()
+                    }
                 
                 # Deactivate models that weren't in this sync
                 deactivated_count = await uow.available_models.deactivate_stale_models(
@@ -109,6 +128,7 @@ class ModelSyncService:
             {
                 'provider': 'ollama',
                 'model_id': 'llama3',
+                'model_string': 'ollama:llama3',
                 'display_name': 'Llama 3 (Local)',
                 'description': 'Local Llama 3 model for offline inference',
                 'context_length': 8192,
@@ -125,6 +145,7 @@ class ModelSyncService:
             {
                 'provider': 'ollama',
                 'model_id': 'mistral',
+                'model_string': 'ollama:mistral',
                 'display_name': 'Mistral (Local)',
                 'description': 'Local Mistral model for offline inference',
                 'context_length': 8192,
@@ -141,6 +162,7 @@ class ModelSyncService:
             {
                 'provider': 'ollama',
                 'model_id': 'codellama',
+                'model_string': 'ollama:codellama',
                 'display_name': 'Code Llama (Local)',
                 'description': 'Local Code Llama model specialized for programming tasks',
                 'context_length': 8192,
@@ -157,6 +179,7 @@ class ModelSyncService:
             {
                 'provider': 'ollama',
                 'model_id': 'phi3',
+                'model_string': 'ollama:phi3',
                 'display_name': 'Phi-3 (Local)',
                 'description': 'Local Microsoft Phi-3 model optimized for efficiency',
                 'context_length': 8192,

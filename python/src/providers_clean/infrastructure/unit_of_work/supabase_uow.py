@@ -8,7 +8,8 @@ from ..repositories.supabase import (
     SupabaseModelConfigRepository,
     SupabaseApiKeyRepository,
     SupabaseUsageRepository,
-    SupabaseAvailableModelsRepository
+    SupabaseAvailableModelsRepository,
+    SupabaseServiceRegistryRepository
 )
 
 
@@ -36,6 +37,7 @@ class SupabaseUnitOfWork(IUnitOfWork):
         self.api_keys = None
         self.usage = None
         self.available_models = None
+        self.service_registry = None
     
     async def __aenter__(self):
         """Enter the unit of work context.
@@ -49,6 +51,7 @@ class SupabaseUnitOfWork(IUnitOfWork):
         self.api_keys = SupabaseApiKeyRepository(self.db, self.cipher)
         self.usage = SupabaseUsageRepository(self.db)
         self.available_models = SupabaseAvailableModelsRepository(self.db)
+        self.service_registry = SupabaseServiceRegistryRepository(self.db)
         
         return self
     
@@ -72,6 +75,7 @@ class SupabaseUnitOfWork(IUnitOfWork):
         self.api_keys = None
         self.usage = None
         self.available_models = None
+        self.service_registry = None
     
     async def commit(self):
         """Commit the current transaction.

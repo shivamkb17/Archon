@@ -190,3 +190,16 @@ def get_model_sync_service(uow: IUnitOfWork = Depends(get_unit_of_work)):
     """
     from ..services.model_sync_service import ModelSyncService
     return ModelSyncService(uow)
+
+
+def get_service_registry_service(uow: IUnitOfWork = Depends(get_unit_of_work)):
+    """Get service registry service for managing service/agent registry.
+    
+    Args:
+        uow: Unit of Work instance
+        
+    Returns:
+        ServiceRegistryService instance
+    """
+    from ..services.service_registry_service import ServiceRegistryService
+    return ServiceRegistryService(uow)

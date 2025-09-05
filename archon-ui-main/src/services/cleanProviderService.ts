@@ -27,6 +27,22 @@ import type {
 const API_BASE = '/providers';
 
 class CleanProviderService {
+  // ==================== Providers ====================
+
+  /**
+   * Get list of providers present in the database
+   */
+  async getProviders(): Promise<string[]> {
+    return apiRequest<string[]>(`${API_BASE}/providers/list`);
+  }
+
+  /**
+   * Bootstrap: sync models and register services
+   */
+  async bootstrap(force_refresh: boolean = false): Promise<any> {
+    const suffix = force_refresh ? '?force_refresh=true' : '';
+    return apiRequest<any>(`${API_BASE}/bootstrap${suffix}`, { method: 'POST' });
+  }
   // ==================== Model Configuration ====================
   
   /**
@@ -350,26 +366,21 @@ class CleanProviderService {
    * Get list of all available providers
    */
   async getAllProviders(): Promise<string[]> {
-    try {
-      return await apiRequest<string[]>(`${API_BASE}/providers/list`);
-    } catch {
-      // Fallback to common providers if API fails
-      return [
-        'openai', 'anthropic', 'google', 'mistral',
-        'meta', 'deepseek', 'groq', 'cohere',
-        'ai21', 'xai', 'ollama', 'openrouter'
-      ];
-    }
+    return apiRequest<string[]>(`${API_BASE}/providers/list`);
   }
 
   /**
    * Get all provider statuses
    */
   async getAllProviderStatuses(): Promise<ProviderStatus[]> {
-    const [allProviders, activeProviders] = await Promise.all([
-      this.getAllProviders(),
-      this.getActiveProviders()
-    ]);
+    let allProviders: string[] = [];
+    try {
+      allProviders = await this.getAllProviders();
+    } catch (e) {
+      // Treat 404 as no providers present in DB
+      allProviders = [];
+    }
+    const activeProviders = await this.getActiveProviders();
 
     const statuses: ProviderStatus[] = [];
     

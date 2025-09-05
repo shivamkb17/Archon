@@ -15,7 +15,7 @@ import { useToast } from '../contexts/ToastContext';
 import { cleanProviderService } from '../services/cleanProviderService';
 import { ProviderSettings } from '../components/settings/ProviderSettings';
 import { AgentCard } from '../components/agents/AgentCard';
-import { getAgents, getServices } from '../types/agent';
+import { useServiceRegistry } from '../contexts/ServiceRegistryContext';
 import type { AvailableModel, ModelConfig } from '../types/cleanProvider';
 
 export const AgentsPage: React.FC = () => {
@@ -26,6 +26,13 @@ export const AgentsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   
   const { showToast } = useToast();
+  const { 
+    agents, 
+    backendServices, 
+    loading: servicesLoading, 
+    error: servicesError,
+    refreshServices 
+  } = useServiceRegistry();
 
   useEffect(() => {
     loadData();
@@ -87,14 +94,58 @@ export const AgentsPage: React.FC = () => {
     }
   };
 
-  const agents = getAgents();
-  const services = getServices();
-  const currentItems = activeTab === 'agents' ? agents : services;
+  // Convert database services to legacy AgentConfig format for compatibility
+  const currentItems = activeTab === 'agents' 
+    ? agents.map(agent => ({
+        id: agent.service_name,
+        name: agent.display_name,
+        icon: agent.icon || '🤖',
+        description: agent.description || '',
+        category: agent.category,
+        supportsTemperature: agent.supports_temperature,
+        supportsMaxTokens: agent.supports_max_tokens,
+        defaultModel: agent.default_model || 'openai:gpt-4o-mini',
+        modelType: agent.model_type,
+        costProfile: agent.cost_profile || 'medium'
+      }))
+    : backendServices.map(service => ({
+        id: service.service_name,
+        name: service.display_name,
+        icon: service.icon || '⚙️',
+        description: service.description || '',
+        category: service.category,
+        supportsTemperature: service.supports_temperature,
+        supportsMaxTokens: service.supports_max_tokens,
+        defaultModel: service.default_model || 'openai:gpt-4o-mini',
+        modelType: service.model_type,
+        costProfile: service.cost_profile || 'medium'
+      }));
 
-  if (loading) {
+  if (loading || servicesLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 dark:border-white"></div>
+      </div>
+    );
+  }
+  
+  // Show error if services failed to load
+  if (servicesError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+          Failed to Load Services
+        </h2>
+        <p className="text-gray-600 dark:text-gray-400 mb-4 text-center max-w-md">
+          Could not load service registry from database: {servicesError}
+        </p>
+        <button
+          onClick={() => refreshServices()}
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -256,7 +307,7 @@ export const AgentsPage: React.FC = () => {
           <div className="flex items-center gap-2">
             <span>Backend Services</span>
             <span className="px-2 py-0.5 text-xs rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400">
-              {services.length}
+              {backendServices.length}
             </span>
           </div>
         </button>

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Cpu, AlertCircle, CheckCircle, RefreshCw, Coins, Hash } from 'lucide-react';
 import { cleanProviderService } from '../services/cleanProviderService';
-import { AGENT_CONFIGS } from '../types/agent';
+import { useServiceRegistry } from '../contexts/ServiceRegistryContext';
 
 interface ActiveModel {
   model_string: string;
@@ -61,6 +61,8 @@ export const ModelStatusBar: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  const { getAgentConfigs, loading: servicesLoading } = useServiceRegistry();
 
   const fetchModelStatus = async () => {
     try {
@@ -92,12 +94,14 @@ export const ModelStatusBar: React.FC = () => {
   };
 
   // Always show a bar, even while loading
-  if (loading) {
+  if (loading || servicesLoading) {
     return (
       <div className="bg-gray-900/95 backdrop-blur-sm border-b border-gray-700 px-4 py-1.5 shadow-lg">
         <div className="flex items-center gap-2 text-gray-400">
           <Cpu className="w-3 h-3 animate-pulse" />
-          <span className="text-xs">Loading model status...</span>
+          <span className="text-xs">
+            Loading {loading ? 'model status' : 'service registry'}...
+          </span>
         </div>
       </div>
     );
@@ -160,17 +164,20 @@ export const ModelStatusBar: React.FC = () => {
           
           {modelStatus.active_models && Object.entries(modelStatus.active_models)
             .filter(([service]) => {
-              // Only show services that are defined in our agent registry
-              return AGENT_CONFIGS[service] !== undefined;
+              // Only show services that are defined in our dynamic service registry
+              const agentConfigs = getAgentConfigs();
+              return agentConfigs[service] !== undefined;
             })
-            .map(([service, model]) => (
+            .map(([service, model]) => {
+              const agentConfigs = getAgentConfigs();
+              return (
             <div
               key={service}
               className="flex items-center gap-1 bg-gray-800/50 rounded px-1.5 py-0.5"
-              title={`${AGENT_CONFIGS[service]?.name || service}: ${model.model_string}`}
+              title={`${agentConfigs[service]?.name || service}: ${model.model_string}`}
             >
               <span className="text-[10px] text-gray-400">
-                {AGENT_CONFIGS[service]?.name || service}:
+                {agentConfigs[service]?.name || service}:
               </span>
               <div className="flex items-center gap-1">
                 <div
@@ -192,7 +199,8 @@ export const ModelStatusBar: React.FC = () => {
                 )}
               </div>
             </div>
-          ))}
+              );
+            })}
         </div>
 
         <button

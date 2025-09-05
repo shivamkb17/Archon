@@ -6,7 +6,7 @@ are executed as a single transaction, maintaining data consistency.
 
 from abc import ABC, abstractmethod
 from typing import Any, TypeVar, Generic, Optional
-from .repositories import IModelConfigRepository, IApiKeyRepository, IUsageRepository, IAvailableModelsRepository
+from .repositories import IModelConfigRepository, IApiKeyRepository, IUsageRepository, IAvailableModelsRepository, IServiceRegistryRepository
 
 T = TypeVar('T', bound='IUnitOfWork')
 
@@ -18,6 +18,7 @@ class IUnitOfWork(ABC):
     api_keys: Optional[IApiKeyRepository]
     usage: Optional[IUsageRepository]
     available_models: Optional[IAvailableModelsRepository]
+    service_registry: Optional[IServiceRegistryRepository]
     
     @abstractmethod
     async def __aenter__(self) -> 'IUnitOfWork':

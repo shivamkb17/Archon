@@ -182,9 +182,20 @@ class SupabaseAvailableModelsRepository(IAvailableModelsRepository):
             return 0
             
         try:
-            # Prepare data for bulk upsert
+            # Prepare data for bulk upsert and deduplicate by (provider, model_id)
             formatted_models = []
+            seen_models = set()
+            duplicates_count = 0
+            
             for model_data in models_data:
+                provider_model_key = (model_data['provider'], model_data['model_id'])
+                
+                if provider_model_key in seen_models:
+                    duplicates_count += 1
+                    continue
+                    
+                seen_models.add(provider_model_key)
+                
                 formatted_model = {
                     'provider': model_data['provider'],
                     'model_id': model_data['model_id'],
@@ -207,6 +218,9 @@ class SupabaseAvailableModelsRepository(IAvailableModelsRepository):
                 }
                 formatted_models.append(formatted_model)
             
+            if duplicates_count > 0:
+                print(f"Removed {duplicates_count} duplicate models before sync")
+            
             # Use bulk upsert instead of individual RPC calls
             response = self.db.table(self.table_name).upsert(
                 formatted_models,
@@ -219,8 +233,12 @@ class SupabaseAvailableModelsRepository(IAvailableModelsRepository):
             return synced_count
             
         except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Bulk sync failed: {e}", exc_info=True)
             print(f"Bulk sync failed: {e}")
-            return 0
+            # Re-raise the exception so the sync service can handle it properly
+            raise
     
     async def deactivate_stale_models(self, source: str = 'openrouter', sync_time: Optional[datetime] = None) -> int:
         """Mark models as inactive if they weren't updated in the latest sync.

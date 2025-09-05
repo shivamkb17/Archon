@@ -447,19 +447,28 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = React.memo(({ o
   const loadProviders = async () => {
     try {
       setLoading(true);
-      
-      // Get all available providers, current status, and metadata
-      const [allProviderList, providerStatuses, metadata] = await Promise.all([
-        cleanProviderService.getAllProviders(),
-        cleanProviderService.getAllProviderStatuses(),
-        cleanProviderService.getProvidersMetadata()
-      ]);
+      // Get all available providers and statuses
+      let allProviderList: string[] = [];
+      try {
+        allProviderList = await cleanProviderService.getAllProviders();
+      } catch (e) {
+        allProviderList = [];
+      }
+
+      const providerStatuses = await cleanProviderService.getAllProviderStatuses();
+      // Provider metadata is optional; handle 404 as empty object
+      let metadata: Record<string, ProviderMetadata> = {} as any;
+      try {
+        metadata = await cleanProviderService.getProvidersMetadata();
+      } catch (e) {
+        metadata = {} as any;
+      }
 
       // Filter to only show configured providers
       const configuredProviders = providerStatuses.filter(p => p.configured);
       setActiveProviders(configuredProviders);
       setProvidersMetadata(metadata);
-      
+
       // Get list of unconfigured providers
       const configuredNames = configuredProviders.map(p => p.provider);
       const unconfiguredProviders = allProviderList.filter(p => !configuredNames.includes(p));
@@ -626,6 +635,7 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = React.memo(({ o
         }}
         existingProviders={activeProviders.map(p => p.provider)}
         providersMetadata={providersMetadata}
+        availableProviders={allProviders}
       />
     </div>
   );
