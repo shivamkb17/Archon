@@ -21,12 +21,12 @@ import {
   Sliders,
   Edit3
 } from 'lucide-react';
-import { useToast } from '../../contexts/ToastContext';
-import { cleanProviderService } from '../../services/cleanProviderService';
-import type { AgentConfig } from '../../types/agent';
-import type { AvailableModel } from '../../types/cleanProvider';
-import { Button } from '../ui/Button';
-import { Badge } from '../ui/Badge';
+import { useToast } from '../../../contexts/ToastContext';
+import { cleanProviderService } from '../../../services/cleanProviderService';
+import type { AgentConfig } from '../../../types/agent';
+import type { AvailableModel } from '../../../types/cleanProvider';
+import { Button } from '../../../components/ui/Button';
+import { Badge } from '../../../components/ui/Badge';
 import { ModelSelectionModal } from './ModelSelectionModal';
 
 interface AgentCardProps {
@@ -181,7 +181,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({
       {(isActive || isSaving) && (
         <div className="absolute top-0 left-0 right-0 h-[3px] animate-shimmer transition-all duration-500 z-10" 
              style={{ 
-               background: isSaving 
+               backgroundImage: isSaving 
                  ? 'linear-gradient(90deg, transparent 0%, rgba(251, 191, 36, 1) 25%, rgba(251, 146, 60, 1) 75%, transparent 100%)'
                  : 'linear-gradient(90deg, transparent 0%, rgba(168, 85, 247, 1) 25%, rgba(7, 180, 130, 1) 75%, transparent 100%)',
                backgroundSize: '200% 100%'

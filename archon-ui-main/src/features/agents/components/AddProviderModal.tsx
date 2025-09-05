@@ -10,25 +10,22 @@ import {
   X,
   Key,
   ExternalLink,
-  Shield,
   Zap,
   Info,
   CheckCircle,
   AlertCircle,
-  Globe,
   DollarSign,
   Eye,
   EyeOff,
   Brain,
   FileText
 } from 'lucide-react';
-import { Modal } from '../ui/Modal';
-import { Button } from '../ui/Button';
-import { Input } from '../ui/Input';
-import { Badge } from '../ui/Badge';
-import { useToast } from '../../contexts/ToastContext';
-import { cleanProviderService } from '../../services/cleanProviderService';
-import type { ProviderMetadata } from '../../types/cleanProvider';
+import { Modal } from '../../../components/ui/Modal';
+import { Button } from '../../../components/ui/Button';
+import { Badge } from '../../../components/ui/Badge';
+import { useToast } from '../../../contexts/ToastContext';
+import { cleanProviderService } from '../../../services/cleanProviderService';
+import type { ProviderMetadata } from '../../../types/cleanProvider';
 
 interface AddProviderModalProps {
   isOpen: boolean;
@@ -55,106 +52,15 @@ export const AddProviderModal: React.FC<AddProviderModalProps> = ({
   
   const { showToast } = useToast();
 
-  // Provider information
-  const providerInfo: Record<string, {
-    name: string;
-    icon: string;
-    color: string;
-    description: string;
-    apiKeyUrl: string;
-    apiKeyPlaceholder: string;
-    features: string[];
-  }> = {
-    openai: {
-      name: 'OpenAI',
-      icon: '🤖',
-      color: 'text-emerald-400',
-      description: 'GPT-4, GPT-3.5, and embedding models',
-      apiKeyUrl: 'https://platform.openai.com/api-keys',
-      apiKeyPlaceholder: 'sk-...',
-      features: ['GPT-4', 'GPT-3.5 Turbo', 'Embeddings', 'Vision', 'Function Calling']
-    },
-    anthropic: {
-      name: 'Anthropic',
-      icon: '🧠',
-      color: 'text-blue-400',
-      description: 'Claude 3 models with large context windows',
-      apiKeyUrl: 'https://console.anthropic.com/settings/keys',
-      apiKeyPlaceholder: 'sk-ant-...',
-      features: ['Claude 3 Opus', 'Claude 3 Sonnet', 'Claude 3 Haiku', '200K Context', 'Vision']
-    },
-    google: {
-      name: 'Google',
-      icon: '🔍',
-      color: 'text-yellow-400',
-      description: 'Gemini models with multimodal capabilities',
-      apiKeyUrl: 'https://makersuite.google.com/app/apikey',
-      apiKeyPlaceholder: 'AIza...',
-      features: ['Gemini Pro', 'Gemini Pro Vision', 'Embeddings', 'Long Context']
-    },
-    mistral: {
-      name: 'Mistral',
-      icon: '🌊',
-      color: 'text-purple-400',
-      description: 'Open-weight models with strong performance',
-      apiKeyUrl: 'https://console.mistral.ai/api-keys',
-      apiKeyPlaceholder: 'API key',
-      features: ['Mistral Large', 'Mistral Medium', 'Mistral Small', 'Embeddings']
-    },
-    groq: {
-      name: 'Groq',
-      icon: '⚡',
-      color: 'text-orange-400',
-      description: 'Ultra-fast inference with LPU technology',
-      apiKeyUrl: 'https://console.groq.com/keys',
-      apiKeyPlaceholder: 'gsk_...',
-      features: ['Llama 3', 'Mixtral', 'Gemma', 'Ultra Fast', 'Free Tier']
-    },
-    deepseek: {
-      name: 'DeepSeek',
-      icon: '🔬',
-      color: 'text-cyan-400',
-      description: 'Cost-effective models with coding capabilities',
-      apiKeyUrl: 'https://platform.deepseek.com/api_keys',
-      apiKeyPlaceholder: 'sk-...',
-      features: ['DeepSeek Coder', 'DeepSeek Chat', 'Low Cost', 'Code Generation']
-    },
-    cohere: {
-      name: 'Cohere',
-      icon: '🌐',
-      color: 'text-indigo-400',
-      description: 'Enterprise-focused language models',
-      apiKeyUrl: 'https://dashboard.cohere.com/api-keys',
-      apiKeyPlaceholder: 'API key',
-      features: ['Command R+', 'Command R', 'Embeddings', 'Rerank', 'RAG Optimized']
-    },
-    xai: {
-      name: 'xAI',
-      icon: '✖️',
-      color: 'text-red-400',
-      description: 'Grok models with real-time knowledge',
-      apiKeyUrl: 'https://x.ai/api',
-      apiKeyPlaceholder: 'xai-...',
-      features: ['Grok-1', 'Real-time Data', 'Large Context']
-    },
-    openrouter: {
-      name: 'OpenRouter',
-      icon: '🌍',
-      color: 'text-pink-400',
-      description: 'Unified API for multiple model providers',
-      apiKeyUrl: 'https://openrouter.ai/keys',
-      apiKeyPlaceholder: 'sk-or-...',
-      features: ['100+ Models', 'Unified API', 'Fallback Support', 'Usage Analytics']
-    },
-    ollama: {
-      name: 'Ollama',
-      icon: '🦙',
-      color: 'text-gray-400',
-      description: 'Run open-source models locally',
-      apiKeyUrl: '',
-      apiKeyPlaceholder: 'http://localhost:11434',
-      features: ['Local Models', 'Privacy', 'No API Key', 'Offline', 'Custom Models']
-    }
+  // Generate provider display info from metadata or provider name
+  const getProviderDisplayInfo = (provider: string, metadata?: ProviderMetadata) => {
+    return {
+      name: metadata ? provider.charAt(0).toUpperCase() + provider.slice(1) : provider.charAt(0).toUpperCase() + provider.slice(1),
+      icon: '🤖', // Default icon, will use metadata if available
+      color: 'text-gray-400', // Default color
+      description: metadata ? `${metadata.model_count} models available${metadata.has_free_models ? ' • Free tier available' : ''}` : `Provider with models available`,
+      apiKeyPlaceholder: provider === 'ollama' ? 'http://localhost:11434' : 'Enter API key'
+    };
   };
 
   // Filter available providers based on backend metadata
@@ -166,17 +72,14 @@ export const AddProviderModal: React.FC<AddProviderModalProps> = ({
 
     const query = searchQuery.toLowerCase();
     return allProviderKeys.filter(key => {
-      const info = providerInfo[key];
       const metadata = providersMetadata[key];
+      const info = getProviderDisplayInfo(key, metadata);
       
-      // Search in provider name, description, and features
+      // Search in provider name, description
       return (
         key.toLowerCase().includes(query) ||
-        (info && (
-          info.name.toLowerCase().includes(query) ||
-          info.description.toLowerCase().includes(query) ||
-          info.features.some(f => f.toLowerCase().includes(query))
-        )) ||
+        info.name.toLowerCase().includes(query) ||
+        info.description.toLowerCase().includes(query) ||
         (metadata && metadata.provider.toLowerCase().includes(query))
       );
     });
@@ -208,7 +111,7 @@ export const AddProviderModal: React.FC<AddProviderModalProps> = ({
       await cleanProviderService.setApiKey(selectedProvider, apiKey.trim());
       
       const isUpdate = existingProviders.includes(selectedProvider);
-      const providerName = providerInfo[selectedProvider]?.name || selectedProvider.charAt(0).toUpperCase() + selectedProvider.slice(1);
+      const providerName = getProviderDisplayInfo(selectedProvider, selectedProviderMeta).name;
       showToast(
         `${providerName} ${isUpdate ? 'updated' : 'added'} successfully`, 
         'success'
@@ -282,8 +185,8 @@ export const AddProviderModal: React.FC<AddProviderModalProps> = ({
             <div className="space-y-3 max-h-96 overflow-y-auto">
             {filteredProviders.length > 0 ? (
               filteredProviders.map(key => {
-                const info = providerInfo[key];  // UI display info (icons, colors, etc)
                 const metadata = providersMetadata[key];  // Backend metadata (models, costs, etc)
+                const info = getProviderDisplayInfo(key, metadata);  // Generated display info
                 const isConfigured = existingProviders.includes(key);
                 
                 return (
@@ -296,11 +199,11 @@ export const AddProviderModal: React.FC<AddProviderModalProps> = ({
                     }`}
                   >
                     <div className="flex items-start gap-3">
-                      <span className="text-2xl">{info?.icon || '🤖'}</span>
+                      <span className="text-2xl">{info.icon}</span>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <h3 className={`font-medium ${info?.color || 'text-gray-400'}`}>
-                            {info?.name || key.charAt(0).toUpperCase() + key.slice(1)}
+                          <h3 className={`font-medium ${info.color}`}>
+                            {info.name}
                           </h3>
                           {isConfigured && (
                             <Badge variant="success" className="text-xs">
@@ -315,10 +218,9 @@ export const AddProviderModal: React.FC<AddProviderModalProps> = ({
                           )}
                         </div>
                         
-                        {/* Use backend metadata for description */}
+                        {/* Use generated description from metadata */}
                         <p className="text-xs text-gray-400 mb-2">
-                          {info?.description || 
-                           (metadata && `${metadata.model_count} models available${metadata.has_free_models ? ' • Free tier available' : ''}`)}
+                          {info.description}
                         </p>
                         
                         {/* Show backend metadata features */}
@@ -386,12 +288,16 @@ export const AddProviderModal: React.FC<AddProviderModalProps> = ({
             {/* Selected Provider Header */}
             <div className="flex items-center justify-between p-4 bg-zinc-800 rounded-lg">
               <div className="flex items-center gap-3">
-                <span className="text-2xl">{providerInfo[selectedProvider]?.icon || '🤖'}</span>
-                <div>
-                  <h3 className={`font-medium ${providerInfo[selectedProvider]?.color || 'text-gray-400'}`}>
-                    {providerInfo[selectedProvider]?.name || selectedProvider.charAt(0).toUpperCase() + selectedProvider.slice(1)}
-                  </h3>
-                  {selectedProviderMeta && (
+                {(() => {
+                  const info = getProviderDisplayInfo(selectedProvider, selectedProviderMeta);
+                  return (
+                    <>
+                      <span className="text-2xl">{info.icon}</span>
+                      <div>
+                        <h3 className={`font-medium ${info.color}`}>
+                          {info.name}
+                        </h3>
+                        {selectedProviderMeta && (
                     <div className="space-y-1">
                       <p className="text-xs text-gray-400">
                         {selectedProviderMeta.model_count} models available
@@ -405,10 +311,13 @@ export const AddProviderModal: React.FC<AddProviderModalProps> = ({
                             Max {Math.floor(selectedProviderMeta.max_context_length / 1000)}K context
                           </span>
                         )}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
+                        )}
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
               <button
                 onClick={() => setSelectedProvider(null)}
@@ -429,7 +338,7 @@ export const AddProviderModal: React.FC<AddProviderModalProps> = ({
                   type={showApiKey ? 'text' : 'password'}
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
-                  placeholder={providerInfo[selectedProvider]?.apiKeyPlaceholder || 'Enter API key'}
+                  placeholder={getProviderDisplayInfo(selectedProvider, selectedProviderMeta).apiKeyPlaceholder}
                   className="w-full pl-10 pr-10 py-2 text-sm bg-zinc-800 text-white rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-500"
                 />
                 <button
@@ -439,18 +348,6 @@ export const AddProviderModal: React.FC<AddProviderModalProps> = ({
                   {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              
-              {providerInfo[selectedProvider]?.apiKeyUrl && (
-                <a
-                  href={providerInfo[selectedProvider]?.apiKeyUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 mt-2 text-xs text-purple-400 hover:text-purple-300"
-                >
-                  Get API key
-                  <ExternalLink className="w-3 h-3" />
-                </a>
-              )}
             </div>
 
             {/* Info Box */}

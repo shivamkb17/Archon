@@ -29,11 +29,11 @@ import {
   ImageIcon,
   Wrench
 } from 'lucide-react';
-import { useToast } from '../../contexts/ToastContext';
-import { cleanProviderService } from '../../services/cleanProviderService';
-import type { ProviderType, ProviderStatus, ProviderMetadata } from '../../types/cleanProvider';
-import { Button } from '../ui/Button';
-import { AddProviderModal } from '../agents/AddProviderModal';
+import { useToast } from '../../../contexts/ToastContext';
+import { cleanProviderService } from '../../../services/cleanProviderService';
+import type { ProviderType, ProviderStatus, ProviderMetadata } from '../../../types/cleanProvider';
+import { Button } from '../../../components/ui/Button';
+import { AddProviderModal } from './AddProviderModal';
 
 interface ProviderCardProps {
   provider: ProviderStatus;

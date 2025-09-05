@@ -20,11 +20,11 @@ import {
   Settings2,
   Sliders
 } from 'lucide-react';
-import { Modal } from '../ui/Modal';
-import { Button } from '../ui/Button';
-import { Badge } from '../ui/Badge';
-import type { AvailableModel } from '../../types/cleanProvider';
-import type { AgentConfig } from '../../types/agent';
+import { Modal } from '../../../components/ui/Modal';
+import { Button } from '../../../components/ui/Button';
+import { Badge } from '../../../components/ui/Badge';
+import type { AvailableModel } from '../../../types/cleanProvider';
+import type { AgentConfig } from '../../../types/agent';
 
 interface ModelSelectionModalProps {
   isOpen: boolean;
