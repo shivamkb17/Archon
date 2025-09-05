@@ -15,43 +15,7 @@ from ...config.logfire_config import get_logger
 
 logger = get_logger(__name__)
 
-# Import Socket.IO instance directly to avoid circular imports
-try:
-    from ...socketio_app import get_socketio_instance
-    
-    _sio = get_socketio_instance()
-    _broadcast_available = True
-    logger.info("✅ Socket.IO broadcasting is AVAILABLE - real-time updates enabled")
-    
-    async def broadcast_task_update(project_id: str, event_type: str, task_data: dict):
-        """Broadcast task updates to project room."""
-        await _sio.emit(event_type, task_data, room=project_id)
-        logger.info(
-            f"✅ Broadcasted {event_type} for task {task_data.get('id', 'unknown')} to project {project_id}"
-        )
-        
-except ImportError as e:
-    logger.warning(f"❌ Socket.IO broadcasting not available - ImportError: {e}")
-    _broadcast_available = False
-    _sio = None
-
-    # Dummy function when broadcasting is not available
-    async def broadcast_task_update(*args, **kwargs):
-        logger.debug(f"Socket.IO broadcast skipped - not available")
-        pass
-
-except Exception as e:
-    logger.warning(f"❌ Socket.IO broadcasting not available - Exception: {type(e).__name__}: {e}")
-    import traceback
-
-    logger.warning(f"❌ Full traceback: {traceback.format_exc()}")
-    _broadcast_available = False
-    _sio = None
-
-    # Dummy function when broadcasting is not available
-    async def broadcast_task_update(*args, **kwargs):
-        logger.debug(f"Socket.IO broadcast skipped - not available")
-        pass
+# Task updates are handled via polling - no broadcasting needed
 
 
 class TaskService:
@@ -154,17 +118,6 @@ class TaskService:
             if response.data:
                 task = response.data[0]
 
-                # Broadcast Socket.IO update for new task
-                if _broadcast_available:
-                    try:
-                        await broadcast_task_update(
-                            project_id=task["project_id"], event_type="task_created", task_data=task
-                        )
-                        logger.info(f"Socket.IO broadcast sent for new task {task['id']}")
-                    except Exception as ws_error:
-                        logger.warning(
-                            f"Failed to broadcast Socket.IO update for new task {task['id']}: {ws_error}"
-                        )
 
                 return True, {
                     "task": {
@@ -186,17 +139,38 @@ class TaskService:
             return False, {"error": f"Error creating task: {str(e)}"}
 
     def list_tasks(
-        self, project_id: str = None, status: str = None, include_closed: bool = False
+        self,
+        project_id: str = None,
+        status: str = None,
+        include_closed: bool = False,
+        exclude_large_fields: bool = False,
+        include_archived: bool = False
     ) -> tuple[bool, dict[str, Any]]:
         """
         List tasks with various filters.
+
+        Args:
+            project_id: Filter by project
+            status: Filter by status
+            include_closed: Include done tasks
+            exclude_large_fields: If True, excludes sources and code_examples fields
+            include_archived: If True, includes archived tasks
 
         Returns:
             Tuple of (success, result_dict)
         """
         try:
             # Start with base query
-            query = self.supabase_client.table("archon_tasks").select("*")
+            if exclude_large_fields:
+                # Select all fields except large JSONB ones
+                query = self.supabase_client.table("archon_tasks").select(
+                    "id, project_id, parent_task_id, title, description, "
+                    "status, assignee, task_order, feature, archived, "
+                    "archived_at, archived_by, created_at, updated_at, "
+                    "sources, code_examples"  # Still fetch for counting, but will process differently
+                )
+            else:
+                query = self.supabase_client.table("archon_tasks").select("*")
 
             # Track filters for debugging
             filters_applied = []
@@ -220,11 +194,14 @@ class TaskService:
                 query = query.neq("status", "done")
                 filters_applied.append("exclude done tasks")
 
-            # Filter out archived tasks using is null or is false
-            query = query.or_("archived.is.null,archived.is.false")
-            filters_applied.append("exclude archived tasks (null or false)")
+            # Filter out archived tasks only if not including them
+            if not include_archived:
+                query = query.or_("archived.is.null,archived.is.false")
+                filters_applied.append("exclude archived tasks (null or false)")
+            else:
+                filters_applied.append("include all tasks (including archived)")
 
-            logger.info(f"Listing tasks with filters: {', '.join(filters_applied)}")
+            logger.debug(f"Listing tasks with filters: {', '.join(filters_applied)}")
 
             # Execute query and get raw response
             response = (
@@ -249,10 +226,10 @@ class TaskService:
                     else:
                         archived_counts["false"] += 1
 
-                logger.info(
+                logger.debug(
                     f"Retrieved {len(response.data)} tasks. Status distribution: {status_counts}"
                 )
-                logger.info(f"Archived field distribution: {archived_counts}")
+                logger.debug(f"Archived field distribution: {archived_counts}")
 
                 # If we're filtering by status and getting wrong results, log sample
                 if status and len(response.data) > 0:
@@ -261,11 +238,11 @@ class TaskService:
                         f"Status filter: {status}, First task status: {first_task.get('status')}, archived: {first_task.get('archived')}"
                     )
             else:
-                logger.info("No tasks found with current filters")
+                logger.debug("No tasks found with current filters")
 
             tasks = []
             for task in response.data:
-                tasks.append({
+                task_data = {
                     "id": task["id"],
                     "project_id": task["project_id"],
                     "title": task["title"],
@@ -276,7 +253,21 @@ class TaskService:
                     "feature": task.get("feature"),
                     "created_at": task["created_at"],
                     "updated_at": task["updated_at"],
-                })
+                    "archived": task.get("archived", False),
+                }
+
+                if not exclude_large_fields:
+                    # Include full JSONB fields
+                    task_data["sources"] = task.get("sources", [])
+                    task_data["code_examples"] = task.get("code_examples", [])
+                else:
+                    # Add counts instead of full content
+                    task_data["stats"] = {
+                        "sources_count": len(task.get("sources", [])),
+                        "code_examples_count": len(task.get("code_examples", []))
+                    }
+
+                tasks.append(task_data)
 
             filter_info = []
             if project_id:
@@ -368,28 +359,6 @@ class TaskService:
             if response.data:
                 task = response.data[0]
 
-                # Broadcast Socket.IO update
-                if _broadcast_available:
-                    try:
-                        logger.info(
-                            f"Broadcasting task_updated for task {task_id} to project room {task['project_id']}"
-                        )
-                        await broadcast_task_update(
-                            project_id=task["project_id"], event_type="task_updated", task_data=task
-                        )
-                        logger.info(f"✅ Socket.IO broadcast successful for task {task_id}")
-                    except Exception as ws_error:
-                        # Don't fail the task update if Socket.IO broadcasting fails
-                        logger.error(
-                            f"❌ Failed to broadcast Socket.IO update for task {task_id}: {ws_error}"
-                        )
-                        import traceback
-
-                        logger.error(f"Traceback: {traceback.format_exc()}")
-                else:
-                    logger.warning(
-                        f"⚠️ Socket.IO broadcasting not available - task {task_id} update won't be real-time"
-                    )
 
                 return True, {"task": task, "message": "Task updated successfully"}
             else:
@@ -437,19 +406,6 @@ class TaskService:
             )
 
             if response.data:
-                # Broadcast Socket.IO update for archived task
-                if _broadcast_available:
-                    try:
-                        await broadcast_task_update(
-                            project_id=task["project_id"],
-                            event_type="task_archived",
-                            task_data={"id": task_id, "project_id": task["project_id"]},
-                        )
-                        logger.info(f"Socket.IO broadcast sent for archived task {task_id}")
-                    except Exception as ws_error:
-                        logger.warning(
-                            f"Failed to broadcast Socket.IO update for archived task {task_id}: {ws_error}"
-                        )
 
                 return True, {"task_id": task_id, "message": "Task archived successfully"}
             else:
@@ -458,3 +414,59 @@ class TaskService:
         except Exception as e:
             logger.error(f"Error archiving task: {e}")
             return False, {"error": f"Error archiving task: {str(e)}"}
+
+    def get_all_project_task_counts(self) -> tuple[bool, dict[str, dict[str, int]]]:
+        """
+        Get task counts for all projects in a single optimized query.
+        
+        Returns task counts grouped by project_id and status.
+        
+        Returns:
+            Tuple of (success, counts_dict) where counts_dict is:
+            {"project-id": {"todo": 5, "doing": 2, "review": 3, "done": 10}}
+        """
+        try:
+            logger.debug("Fetching task counts for all projects in batch")
+
+            # Query all non-archived tasks grouped by project_id and status
+            response = (
+                self.supabase_client.table("archon_tasks")
+                .select("project_id, status")
+                .or_("archived.is.null,archived.is.false")
+                .execute()
+            )
+
+            if not response.data:
+                logger.debug("No tasks found")
+                return True, {}
+
+            # Process results into counts by project and status
+            counts_by_project = {}
+
+            for task in response.data:
+                project_id = task.get("project_id")
+                status = task.get("status")
+
+                if not project_id or not status:
+                    continue
+
+                # Initialize project counts if not exists
+                if project_id not in counts_by_project:
+                    counts_by_project[project_id] = {
+                        "todo": 0,
+                        "doing": 0,
+                        "review": 0,
+                        "done": 0
+                    }
+
+                # Count all statuses separately
+                if status in ["todo", "doing", "review", "done"]:
+                    counts_by_project[project_id][status] += 1
+
+            logger.debug(f"Task counts fetched for {len(counts_by_project)} projects")
+
+            return True, counts_by_project
+
+        except Exception as e:
+            logger.error(f"Error fetching task counts: {e}")
+            return False, {"error": f"Error fetching task counts: {str(e)}"}

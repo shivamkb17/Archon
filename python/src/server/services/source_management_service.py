@@ -5,41 +5,19 @@ Handles source metadata, summaries, and management.
 Consolidates both utility functions and class-based service.
 """
 
-import asyncio
 from typing import Any
 
 from supabase import Client
 
 from ..config.logfire_config import get_logger, search_logger
 from .client_manager import get_supabase_client
-from .llm_provider_service import get_llm_client, get_llm_model
+from .llm_provider_service import get_llm_client
 
 logger = get_logger(__name__)
 
 
-async def _get_model_choice(provider: str | None = None) -> str:
-    """Get model choice for source summary service."""
-    # Try to get from ProviderManager if available
-    from .provider_manager import ProviderManager
-    from .client_manager import get_supabase_client
-    
-    client = get_supabase_client()
-    if not client:
-        raise ValueError("Database client not available. Cannot determine model configuration.")
-    
-    pm = ProviderManager(client)
-    config = await pm.get_service_config('source_summary')
-    model = config.get('model')
-    
-    if not model:
-        raise ValueError("No model configured for 'source_summary' service. Please configure in the Agents page.")
-    
-    logger.info(f"Using model for source_summary: {model}")
-    return model
-
-
 async def extract_source_summary(
-    source_id: str, content: str, max_length: int = 500, provider: str | None = None
+    source_id: str, content: str, max_length: int = 500, provider: str = None
 ) -> str:
     """
     Extract a summary for a source from its content using an LLM.
@@ -61,10 +39,6 @@ async def extract_source_summary(
     if not content or len(content.strip()) == 0:
         return default_summary
 
-    # Get the model choice from provider integration
-    model_choice = await _get_model_choice(provider)
-    search_logger.info(f"Generating summary for {source_id} using model: {model_choice}")
-
     # Limit content length to avoid token limits
     truncated_content = content[:25000] if len(content) > 25000 else content
 
@@ -77,47 +51,43 @@ The above content is from the documentation for '{source_id}'. Please provide a 
 """
 
     try:
-        # Get provider from ProviderManager for source_summary service
-        from .provider_manager import ProviderManager
-        from .client_manager import get_supabase_client
-        
-        supabase_client = get_supabase_client()
-        if not supabase_client:
-            raise ValueError("Database client not available")
-        
-        pm = ProviderManager(supabase_client)
-        
-        # Use ProviderManager to get client for source_summary service
-        async with pm.get_client('source_summary') as client:
-            # Call the API to generate the summary
+        async with get_llm_client(provider=provider) as client:
+            # Get model choice from credential service
+            from .credential_service import credential_service
+            rag_settings = await credential_service.get_credentials_by_category("rag_strategy")
+            model_choice = rag_settings.get("MODEL_CHOICE", "gpt-4.1-nano")
+
+            search_logger.info(f"Generating summary for {source_id} using model: {model_choice}")
+
+            # Call the LLM API to generate the summary
             response = await client.chat.completions.create(
-            model=model_choice,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a helpful assistant that provides concise library/tool/framework summaries.",
-                },
-                {"role": "user", "content": prompt},
-            ],
-        )
+                model=model_choice,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a helpful assistant that provides concise library/tool/framework summaries.",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+            )
 
-        # Extract the generated summary with proper error handling
-        if not response or not response.choices or len(response.choices) == 0:
-            search_logger.error(f"Empty or invalid response from LLM for {source_id}")
-            return default_summary
+            # Extract the generated summary with proper error handling
+            if not response or not response.choices or len(response.choices) == 0:
+                search_logger.error(f"Empty or invalid response from LLM for {source_id}")
+                return default_summary
 
-        message_content = response.choices[0].message.content
-        if message_content is None:
-            search_logger.error(f"LLM returned None content for {source_id}")
-            return default_summary
+            message_content = response.choices[0].message.content
+            if message_content is None:
+                search_logger.error(f"LLM returned None content for {source_id}")
+                return default_summary
 
-        summary = message_content.strip()
+            summary = message_content.strip()
 
-        # Ensure the summary is not too long
-        if len(summary) > max_length:
-            summary = summary[:max_length] + "..."
+            # Ensure the summary is not too long
+            if len(summary) > max_length:
+                summary = summary[:max_length] + "..."
 
-        return summary
+            return summary
 
     except Exception as e:
         search_logger.error(
@@ -131,7 +101,9 @@ async def generate_source_title_and_metadata(
     content: str,
     knowledge_type: str = "technical",
     tags: list[str] | None = None,
-    provider: str | None = None,
+    provider: str = None,
+    original_url: str | None = None,
+    source_display_name: str | None = None,
 ) -> tuple[str, dict[str, Any]]:
     """
     Generate a user-friendly title and metadata for a source based on its content.
@@ -141,6 +113,7 @@ async def generate_source_title_and_metadata(
         content: Sample content from the source
         knowledge_type: Type of knowledge (default: "technical")
         tags: Optional list of tags
+        provider: Optional provider override
 
     Returns:
         Tuple of (title, metadata)
@@ -151,29 +124,56 @@ async def generate_source_title_and_metadata(
     # Try to generate a better title from content
     if content and len(content.strip()) > 100:
         try:
-            # Get provider from ProviderManager for source_summary service
-            from .provider_manager import ProviderManager
-            from .client_manager import get_supabase_client
-            
-            supabase_client = get_supabase_client()
-            if not supabase_client:
-                raise ValueError("Database client not available")
-            
-            pm = ProviderManager(supabase_client)
-            
-            # Use ProviderManager to get client for source_summary service
-            async with pm.get_client('source_summary') as client:
-                # Get model from provider configuration
-                model_choice = await _get_model_choice(provider)
+            async with get_llm_client(provider=provider) as client:
+                # Get model choice from credential service
+                from .credential_service import credential_service
+                rag_settings = await credential_service.get_credentials_by_category("rag_strategy")
+                model_choice = rag_settings.get("MODEL_CHOICE", "gpt-4.1-nano")
 
                 # Limit content for prompt
                 sample_content = content[:3000] if len(content) > 3000 else content
 
-                prompt = f"""Based on this content from {source_id}, generate a concise, descriptive title (3-6 words) that captures what this source is about:
+                # Determine source type from URL patterns
+                source_type_info = ""
+                if original_url:
+                    if "llms.txt" in original_url:
+                        source_type_info = " (detected from llms.txt file)"
+                    elif "sitemap" in original_url:
+                        source_type_info = " (detected from sitemap)"
+                    elif any(doc_indicator in original_url for doc_indicator in ["docs", "documentation", "api"]):
+                        source_type_info = " (detected from documentation site)"
+                    else:
+                        source_type_info = " (detected from website)"
 
+                # Use display name if available for better context
+                source_context = source_display_name if source_display_name else source_id
+
+                prompt = f"""You are creating a title for crawled content that identifies the SERVICE NAME and SOURCE TYPE.
+
+Source ID: {source_id}
+Original URL: {original_url or 'Not provided'}
+Display Name: {source_context}
+{source_type_info}
+
+Content sample:
 {sample_content}
 
-Provide only the title, nothing else."""
+Generate a title in this format: "[Service Name] [Source Type]"
+
+Requirements:
+- Identify the service/platform name from the URL (e.g., "Anthropic", "OpenAI", "Supabase", "Mem0")
+- Identify the source type: Documentation, API Reference, llms.txt, Guide, etc.
+- Keep it concise (2-4 words total)
+- Use proper capitalization
+
+Examples:
+- "Anthropic Documentation" 
+- "OpenAI API Reference"
+- "Mem0 llms.txt"
+- "Supabase Docs"
+- "GitHub Guide"
+
+Generate only the title, nothing else."""
 
                 response = await client.chat.completions.create(
                     model=model_choice,
@@ -195,12 +195,12 @@ Provide only the title, nothing else."""
         except Exception as e:
             search_logger.error(f"Error generating title for {source_id}: {e}")
 
-    # Build metadata - determine source_type from source_id pattern
-    source_type = "file" if source_id.startswith("file_") else "url"
+    # Build metadata - source_type will be determined by caller based on actual URL
+    # Default to "url" but this should be overridden by the caller
     metadata = {
-        "knowledge_type": knowledge_type, 
-        "tags": tags or [], 
-        "source_type": source_type,
+        "knowledge_type": knowledge_type,
+        "tags": tags or [],
+        "source_type": "url",  # Default, should be overridden by caller based on actual URL
         "auto_generated": True
     }
 
@@ -217,6 +217,8 @@ async def update_source_info(
     tags: list[str] | None = None,
     update_frequency: int = 7,
     original_url: str | None = None,
+    source_url: str | None = None,
+    source_display_name: str | None = None,
 ):
     """
     Update or insert source information in the sources table.
@@ -244,7 +246,14 @@ async def update_source_info(
             search_logger.info(f"Preserving existing title for {source_id}: {existing_title}")
 
             # Update metadata while preserving title
-            source_type = "file" if source_id.startswith("file_") else "url"
+            # Determine source_type based on source_url or original_url
+            if source_url and source_url.startswith("file://"):
+                source_type = "file"
+            elif original_url and original_url.startswith("file://"):
+                source_type = "file"
+            else:
+                source_type = "url"
+
             metadata = {
                 "knowledge_type": knowledge_type,
                 "tags": tags or [],
@@ -257,14 +266,22 @@ async def update_source_info(
                 metadata["original_url"] = original_url
 
             # Update existing source (preserving title)
+            update_data = {
+                "summary": summary,
+                "total_word_count": word_count,
+                "metadata": metadata,
+                "updated_at": "now()",
+            }
+
+            # Add new fields if provided
+            if source_url:
+                update_data["source_url"] = source_url
+            if source_display_name:
+                update_data["source_display_name"] = source_display_name
+
             result = (
                 client.table("archon_sources")
-                .update({
-                    "summary": summary,
-                    "total_word_count": word_count,
-                    "metadata": metadata,
-                    "updated_at": "now()",
-                })
+                .update(update_data)
                 .eq("source_id", source_id)
                 .execute()
             )
@@ -273,10 +290,38 @@ async def update_source_info(
                 f"Updated source {source_id} while preserving title: {existing_title}"
             )
         else:
-            # New source - generate title and metadata
-            title, metadata = await generate_source_title_and_metadata(
-                source_id, content, knowledge_type, tags
-            )
+            # New source - use display name as title if available, otherwise generate
+            if source_display_name:
+                # Use the display name directly as the title (truncated to prevent DB issues)
+                title = source_display_name[:100].strip()
+
+                # Determine source_type based on source_url or original_url
+                if source_url and source_url.startswith("file://"):
+                    source_type = "file"
+                elif original_url and original_url.startswith("file://"):
+                    source_type = "file"
+                else:
+                    source_type = "url"
+
+                metadata = {
+                    "knowledge_type": knowledge_type,
+                    "tags": tags or [],
+                    "source_type": source_type,
+                    "auto_generated": False,
+                }
+            else:
+                # Fallback to AI generation only if no display name
+                title, metadata = await generate_source_title_and_metadata(
+                    source_id, content, knowledge_type, tags, original_url, source_display_name
+                )
+
+                # Override the source_type from AI with actual URL-based determination
+                if source_url and source_url.startswith("file://"):
+                    metadata["source_type"] = "file"
+                elif original_url and original_url.startswith("file://"):
+                    metadata["source_type"] = "file"
+                else:
+                    metadata["source_type"] = "url"
 
             # Add update_frequency and original_url to metadata
             metadata["update_frequency"] = update_frequency
@@ -284,15 +329,23 @@ async def update_source_info(
                 metadata["original_url"] = original_url
 
             search_logger.info(f"Creating new source {source_id} with knowledge_type={knowledge_type}")
-            # Insert new source
-            client.table("archon_sources").insert({
+            # Use upsert to avoid race conditions with concurrent crawls
+            upsert_data = {
                 "source_id": source_id,
                 "title": title,
                 "summary": summary,
                 "total_word_count": word_count,
                 "metadata": metadata,
-            }).execute()
-            search_logger.info(f"Created new source {source_id} with title: {title}")
+            }
+
+            # Add new fields if provided
+            if source_url:
+                upsert_data["source_url"] = source_url
+            if source_display_name:
+                upsert_data["source_display_name"] = source_display_name
+
+            client.table("archon_sources").upsert(upsert_data).execute()
+            search_logger.info(f"Created/updated source {source_id} with title: {title}")
 
     except Exception as e:
         search_logger.error(f"Error updating source {source_id}: {e}")
