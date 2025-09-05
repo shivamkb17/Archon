@@ -123,7 +123,7 @@ class ModelSyncService:
         logger.info("Syncing local models...")
         start_time = datetime.now()
         
-        # Define common local models
+        # Define common local models + essential embedding models  
         local_models = [
             {
                 'provider': 'ollama',
@@ -192,6 +192,75 @@ class ModelSyncService:
                 'supports_tools': True,
                 'supports_reasoning': False,
                 'source': 'local'
+            },
+            # Essential embedding models
+            {
+                'provider': 'openai',
+                'model_id': 'text-embedding-3-small',
+                'model_string': 'openai:text-embedding-3-small',
+                'display_name': 'OpenAI Text Embedding 3 Small',
+                'description': 'High-performance embedding model for semantic search',
+                'context_length': 8191,
+                'input_cost': 0.00000002,  # $0.02 per 1M tokens
+                'output_cost': 0.0,
+                'is_free': False,
+                'cost_tier': 'low',
+                'is_embedding': True,
+                'supports_vision': False,
+                'supports_tools': False,
+                'supports_reasoning': False,
+                'source': 'essential'
+            },
+            {
+                'provider': 'openai',
+                'model_id': 'text-embedding-3-large',
+                'model_string': 'openai:text-embedding-3-large',
+                'display_name': 'OpenAI Text Embedding 3 Large',
+                'description': 'Most capable embedding model for semantic search',
+                'context_length': 8191,
+                'input_cost': 0.00000013,  # $0.13 per 1M tokens
+                'output_cost': 0.0,
+                'is_free': False,
+                'cost_tier': 'low',
+                'is_embedding': True,
+                'supports_vision': False,
+                'supports_tools': False,
+                'supports_reasoning': False,
+                'source': 'essential'
+            },
+            {
+                'provider': 'google',
+                'model_id': 'text-embedding-004',
+                'model_string': 'google:text-embedding-004',
+                'display_name': 'Google Text Embedding 004',
+                'description': 'Google text embedding model for semantic understanding',
+                'context_length': 2048,
+                'input_cost': 0.00000002,  # $0.02 per 1M tokens
+                'output_cost': 0.0,
+                'is_free': False,
+                'cost_tier': 'low',
+                'is_embedding': True,
+                'supports_vision': False,
+                'supports_tools': False,
+                'supports_reasoning': False,
+                'source': 'essential'
+            },
+            {
+                'provider': 'google',
+                'model_id': 'embedding-001',
+                'model_string': 'google:embedding-001',
+                'display_name': 'Google Embedding 001',
+                'description': 'Google embedding model for text understanding',
+                'context_length': 2048,
+                'input_cost': 0.0000000125,  # $0.0125 per 1M tokens
+                'output_cost': 0.0,
+                'is_free': False,
+                'cost_tier': 'low',
+                'is_embedding': True,
+                'supports_vision': False,
+                'supports_tools': False,
+                'supports_reasoning': False,
+                'source': 'essential'
             }
         ]
         

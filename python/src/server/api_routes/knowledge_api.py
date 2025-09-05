@@ -326,14 +326,10 @@ async def refresh_knowledge_item(source_id: str, request: Request):
                 status_code=500, detail={"error": f"Failed to initialize crawler: {str(e)}"}
             )
 
-        # Get provider_manager from app state if available
-        provider_manager = getattr(request.app.state, 'provider_manager', None)
-        
         # Use the same crawl orchestration as regular crawl
         crawl_service = CrawlOrchestrationService(
             crawler=crawler, 
-            supabase_client=get_supabase_client(),
-            provider_manager=provider_manager
+            supabase_client=get_supabase_client()
         )
         crawl_service.set_progress_id(progress_id)
 
@@ -417,11 +413,8 @@ async def crawl_knowledge_item(request: KnowledgeItemRequest, fastapi_request: R
             "log": f"Starting crawl for {request.url}"
         })
         
-        # Get provider_manager from app state if available
-        provider_manager = getattr(fastapi_request.app.state, 'provider_manager', None)
-
         # Start background task
-        task = asyncio.create_task(_perform_crawl_with_progress(progress_id, request, tracker, provider_manager))
+        task = asyncio.create_task(_perform_crawl_with_progress(progress_id, request, tracker))
         # Track the task for cancellation support
         active_crawl_tasks[progress_id] = task
         safe_logfire_info(
@@ -453,7 +446,7 @@ async def crawl_knowledge_item(request: KnowledgeItemRequest, fastapi_request: R
 
 
 async def _perform_crawl_with_progress(
-    progress_id: str, request: KnowledgeItemRequest, tracker: "ProgressTracker", provider_manager=None
+    progress_id: str, request: KnowledgeItemRequest, tracker: "ProgressTracker"
 ):
     """Perform the actual crawl operation with progress tracking using service layer."""
     # Acquire semaphore to limit concurrent crawls
@@ -478,7 +471,7 @@ async def _perform_crawl_with_progress(
 
             supabase_client = get_supabase_client()
             orchestration_service = CrawlOrchestrationService(
-                crawler, supabase_client, provider_manager=provider_manager
+                crawler, supabase_client
             )
             orchestration_service.set_progress_id(progress_id)
 
