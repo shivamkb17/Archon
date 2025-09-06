@@ -582,23 +582,23 @@ async def get_mcp_config():
 
             # Get only model choice from database
             try:
-                from ..services.credential_service import credential_service
+                
 
                 model_choice = await credential_service.get_credential(
                     "MODEL_CHOICE", "gpt-4o-mini"
                 )
                 config["model_choice"] = model_choice
                 config["use_contextual_embeddings"] = (
-                    await credential_service.get_credential("USE_CONTEXTUAL_EMBEDDINGS", "false")
+                    os.getenv("placeholder", "false")
                 ).lower() == "true"
                 config["use_hybrid_search"] = (
-                    await credential_service.get_credential("USE_HYBRID_SEARCH", "false")
+                    os.getenv("placeholder", "false")
                 ).lower() == "true"
                 config["use_agentic_rag"] = (
-                    await credential_service.get_credential("USE_AGENTIC_RAG", "false")
+                    os.getenv("placeholder", "false")
                 ).lower() == "true"
                 config["use_reranking"] = (
-                    await credential_service.get_credential("USE_RERANKING", "false")
+                    os.getenv("placeholder", "false")
                 ).lower() == "true"
             except Exception:
                 # Fallback to default model
@@ -640,7 +640,7 @@ async def save_configuration(config: ServerConfig):
             config_json = config.model_dump_json()
 
             # Save MCP config using credential service
-            from ..services.credential_service import credential_service
+            
 
             success = await credential_service.set_credential(
                 "mcp_config",

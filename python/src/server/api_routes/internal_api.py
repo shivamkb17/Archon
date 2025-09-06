@@ -9,9 +9,10 @@ import logging
 import os
 from typing import Any
 
+import httpx
 from fastapi import APIRouter, HTTPException, Request
 
-from ..services.credential_service import credential_service
+
 
 logger = logging.getLogger(__name__)
 
@@ -71,42 +72,52 @@ async def get_agent_credentials(request: Request) -> dict[str, Any]:
         raise HTTPException(status_code=403, detail="Access forbidden")
 
     try:
-        # Get credentials needed by agents
+        # Get credentials needed by agents from provider_clean system
+        import httpx
+        
+        # Get app settings
+        async with httpx.AsyncClient() as client:
+            settings_response = await client.get("http://localhost:8181/api/app-settings")
+            if not settings_response.is_success:
+                raise HTTPException(status_code=500, detail="Failed to get app settings")
+            app_settings = settings_response.json()
+            
+            # Get agent service models from provider_clean
+            services_response = await client.get("http://localhost:8181/api/providers/services/agents")
+            if not services_response.is_success:
+                raise HTTPException(status_code=500, detail="Failed to get agent service configurations")
+            
+            agent_services = services_response.json()
+            
         credentials = {
-            # OpenAI credentials
-            "OPENAI_API_KEY": await credential_service.get_credential(
-                "OPENAI_API_KEY", decrypt=True
+            # Agent model configurations from provider_clean
+            "DOCUMENT_AGENT_MODEL": next(
+                (svc.get("default_model", "google:gemini-2.5-flash") 
+                 for svc in agent_services if svc.get("service_name") == "document"), 
+                "google:gemini-2.5-flash"
             ),
-            "OPENAI_MODEL": await credential_service.get_credential(
-                "OPENAI_MODEL", default="gpt-4o-mini"
+            "RAG_AGENT_MODEL": next(
+                (svc.get("default_model", "google:gemini-2.5-flash") 
+                 for svc in agent_services if svc.get("service_name") == "rag"), 
+                "google:gemini-2.5-flash"
             ),
-            # Model configurations
-            "DOCUMENT_AGENT_MODEL": await credential_service.get_credential(
-                "DOCUMENT_AGENT_MODEL", default="openai:gpt-4o"
+            "TASK_AGENT_MODEL": next(
+                (svc.get("default_model", "google:gemini-2.5-flash") 
+                 for svc in agent_services if svc.get("service_name") == "task"), 
+                "google:gemini-2.5-flash"
             ),
-            "RAG_AGENT_MODEL": await credential_service.get_credential(
-                "RAG_AGENT_MODEL", default="openai:gpt-4o-mini"
-            ),
-            "TASK_AGENT_MODEL": await credential_service.get_credential(
-                "TASK_AGENT_MODEL", default="openai:gpt-4o"
-            ),
-            # Rate limiting settings
-            "AGENT_RATE_LIMIT_ENABLED": await credential_service.get_credential(
-                "AGENT_RATE_LIMIT_ENABLED", default="true"
-            ),
-            "AGENT_MAX_RETRIES": await credential_service.get_credential(
-                "AGENT_MAX_RETRIES", default="3"
-            ),
+            # Rate limiting and other settings from app_settings
+            "AGENT_RATE_LIMIT_ENABLED": app_settings.get("AGENT_RATE_LIMIT_ENABLED", "true"),
+            "AGENT_MAX_RETRIES": app_settings.get("AGENT_MAX_RETRIES", "3"),
+            "LOG_LEVEL": app_settings.get("LOG_LEVEL", "INFO"),
             # MCP endpoint
             "MCP_SERVICE_URL": f"http://archon-mcp:{os.getenv('ARCHON_MCP_PORT')}",
-            # Additional settings
-            "LOG_LEVEL": await credential_service.get_credential("LOG_LEVEL", default="INFO"),
         }
 
         # Filter out None values
         credentials = {k: v for k, v in credentials.items() if v is not None}
 
-        logger.info(f"Provided credentials to agents service from {request.client.host}")
+        logger.info(f"Provided agent configurations from provider_clean system to {request.client.host}")
         return credentials
 
     except Exception as e:
@@ -127,9 +138,17 @@ async def get_mcp_credentials(request: Request) -> dict[str, Any]:
         raise HTTPException(status_code=403, detail="Access forbidden")
 
     try:
+        # Get app settings for MCP service
+        import httpx
+        async with httpx.AsyncClient() as client:
+            settings_response = await client.get("http://localhost:8181/api/app-settings")
+            if not settings_response.is_success:
+                raise HTTPException(status_code=500, detail="Failed to get app settings")
+            app_settings = settings_response.json()
+        
         credentials = {
-            # MCP might need some credentials in the future
-            "LOG_LEVEL": await credential_service.get_credential("LOG_LEVEL", default="INFO"),
+            # MCP service settings from app_settings
+            "LOG_LEVEL": app_settings.get("LOG_LEVEL", "INFO"),
         }
 
         logger.info(f"Provided credentials to MCP service from {request.client.host}")

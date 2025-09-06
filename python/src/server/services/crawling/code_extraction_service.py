@@ -9,7 +9,7 @@ from collections.abc import Callable
 from typing import Any
 
 from ...config.logfire_config import safe_logfire_error, safe_logfire_info
-from ...services.credential_service import credential_service
+
 from ..storage.code_storage_service import (
     add_code_examples_to_supabase,
     generate_code_summaries_batch,
@@ -73,7 +73,7 @@ class CodeExtractionService:
             return self._settings_cache[key]
 
         try:
-            value = await credential_service.get_credential(key, default)
+            value = await "placeholder"
             # Convert string values to appropriate types
             if isinstance(default, bool):
                 value = str(value).lower() == "true" if value is not None else default

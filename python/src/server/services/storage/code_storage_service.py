@@ -163,11 +163,7 @@ def extract_code_blocks(markdown_content: str, min_length: int = None) -> list[d
     """
     # Load all code extraction settings with direct fallback
     try:
-        from ...services.credential_service import credential_service
-
         def _get_setting_fallback(key: str, default: str) -> str:
-            if credential_service._cache_initialized and key in credential_service._cache:
-                return credential_service._cache[key]
             return os.getenv(key, default)
 
         # Get all relevant settings with defaults
@@ -606,15 +602,7 @@ async def generate_code_summaries_batch(
     # Get max_workers from settings if not provided
     if max_workers is None:
         try:
-            from ...services.credential_service import credential_service
-
-            if (
-                credential_service._cache_initialized
-                and "CODE_SUMMARY_MAX_WORKERS" in credential_service._cache
-            ):
-                max_workers = int(credential_service._cache["CODE_SUMMARY_MAX_WORKERS"])
-            else:
-                max_workers = int(os.getenv("CODE_SUMMARY_MAX_WORKERS", "3"))
+            max_workers = int(os.getenv("CODE_SUMMARY_MAX_WORKERS", "3"))
         except:
             max_workers = 3  # Default fallback
 
@@ -738,32 +726,10 @@ async def add_code_examples_to_supabase(
             search_logger.error(f"Error deleting existing code examples for {url}: {e}")
 
     # Check if contextual embeddings are enabled
-    try:
-        from ..credential_service import credential_service
-
-        use_contextual_embeddings = credential_service._cache.get("USE_CONTEXTUAL_EMBEDDINGS")
-        if isinstance(use_contextual_embeddings, str):
-            use_contextual_embeddings = use_contextual_embeddings.lower() == "true"
-        elif isinstance(use_contextual_embeddings, dict) and use_contextual_embeddings.get(
-            "is_encrypted"
-        ):
-            # Handle encrypted value
-            encrypted_value = use_contextual_embeddings.get("encrypted_value")
-            if encrypted_value:
-                try:
-                    decrypted = credential_service._decrypt_value(encrypted_value)
-                    use_contextual_embeddings = decrypted.lower() == "true"
-                except:
-                    use_contextual_embeddings = False
-            else:
-                use_contextual_embeddings = False
-        else:
-            use_contextual_embeddings = bool(use_contextual_embeddings)
-    except:
-        # Fallback to environment variable
-        use_contextual_embeddings = (
-            os.getenv("USE_CONTEXTUAL_EMBEDDINGS", "false").lower() == "true"
-        )
+    # Use environment variable for now (can be moved to provider clean later)
+    use_contextual_embeddings = (
+        os.getenv("USE_CONTEXTUAL_EMBEDDINGS", "false").lower() == "true"
+    )
 
     search_logger.info(
         f"Using contextual embeddings for code examples: {use_contextual_embeddings}"

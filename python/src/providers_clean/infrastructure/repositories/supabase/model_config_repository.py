@@ -40,6 +40,8 @@ class SupabaseModelConfigRepository(IModelConfigRepository):
                     "model_string": data["model_string"],
                     "temperature": data.get("temperature", 0.7),
                     "max_tokens": data.get("max_tokens"),
+                    "embedding_dimensions": data.get("embedding_dimensions"),
+                    "batch_size": data.get("batch_size"),
                     "updated_at": data.get("updated_at"),
                     "updated_by": data.get("updated_by")
                 }

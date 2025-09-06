@@ -34,6 +34,8 @@ CREATE TABLE IF NOT EXISTS public.model_config (
     model_string TEXT NOT NULL,
     temperature FLOAT DEFAULT 0.7,
     max_tokens INTEGER,
+    embedding_dimensions INTEGER,
+    batch_size INTEGER DEFAULT 100,
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     updated_by TEXT,
     CONSTRAINT valid_model_string CHECK (model_string LIKE '%:%')
@@ -412,23 +414,23 @@ EXECUTE FUNCTION upsert_service_from_model_config();
 -- ===============
 -- Seed initial model_config (no local defaults in code)
 -- ===============
-INSERT INTO public.model_config (service_name, model_string, temperature, max_tokens, updated_at, updated_by) VALUES
-    ('document_agent',       'openai:gpt-4o',                             0.7, NULL, NOW(), 'seed'),
-    ('rag_agent',            'openai:gpt-4o-mini',                        0.7, NULL, NOW(), 'seed'),
-    ('task_agent',           'openai:gpt-4o',                             0.7, NULL, NOW(), 'seed'),
-    ('chat_agent',           'openai:gpt-4o',                             0.7, NULL, NOW(), 'seed'),
-    ('code_agent',           'anthropic:claude-3-5-sonnet-20241022',      0.7, NULL, NOW(), 'seed'),
-    ('vision_agent',         'openai:gpt-4o',                             0.7, NULL, NOW(), 'seed'),
-    ('embeddings',           'openai:text-embedding-3-small',             0.0, NULL, NOW(), 'seed'),
-    ('embedding',            'openai:text-embedding-ada-002',             0.0, NULL, NOW(), 'seed'),
-    ('contextual_embedding', 'openai:gpt-4o-mini',                         0.3, NULL, NOW(), 'seed'),
-    ('source_summary',       'openai:gpt-4o-mini',                         0.5, NULL, NOW(), 'seed'),
-    ('code_summary',         'anthropic:claude-3-haiku-20240307',         0.3, NULL, NOW(), 'seed'),
-    ('code_analysis',        'anthropic:claude-3-haiku-20240307',         0.2, NULL, NOW(), 'seed'),
-    ('validation',           'openai:gpt-3.5-turbo',                      0.0, NULL, NOW(), 'seed'),
-    ('summary_generation',   'openai:gpt-4o-mini',                         0.5, NULL, NOW(), 'seed'),
-    ('llm_primary',          'openai:gpt-4o',                             0.7, NULL, NOW(), 'seed'),
-    ('llm_secondary',        'openai:gpt-4o-mini',                         0.7, NULL, NOW(), 'seed')
+INSERT INTO public.model_config (service_name, model_string, temperature, max_tokens, embedding_dimensions, batch_size, updated_at, updated_by) VALUES
+    ('document_agent',       'openai:gpt-4o',                             0.7, NULL, NULL, NULL, NOW(), 'seed'),
+    ('rag_agent',            'openai:gpt-4o-mini',                        0.7, NULL, NULL, NULL, NOW(), 'seed'),
+    ('task_agent',           'openai:gpt-4o',                             0.7, NULL, NULL, NULL, NOW(), 'seed'),
+    ('chat_agent',           'openai:gpt-4o',                             0.7, NULL, NULL, NULL, NOW(), 'seed'),
+    ('code_agent',           'anthropic:claude-3-5-sonnet-20241022',      0.7, NULL, NULL, NULL, NOW(), 'seed'),
+    ('vision_agent',         'openai:gpt-4o',                             0.7, NULL, NULL, NULL, NOW(), 'seed'),
+    ('embeddings',           'openai:text-embedding-3-small',             0.0, NULL, 1536, 100, NOW(), 'seed'),
+    ('embedding',            'openai:text-embedding-ada-002',             0.0, NULL, 1536, 100, NOW(), 'seed'),
+    ('contextual_embedding', 'openai:gpt-4o-mini',                         0.3, NULL, NULL, NULL, NOW(), 'seed'),
+    ('source_summary',       'openai:gpt-4o-mini',                         0.5, NULL, NULL, NULL, NOW(), 'seed'),
+    ('code_summary',         'anthropic:claude-3-haiku-20240307',         0.3, NULL, NULL, NULL, NOW(), 'seed'),
+    ('code_analysis',        'anthropic:claude-3-haiku-20240307',         0.2, NULL, NULL, NULL, NOW(), 'seed'),
+    ('validation',           'openai:gpt-3.5-turbo',                      0.0, NULL, NULL, NULL, NOW(), 'seed'),
+    ('summary_generation',   'openai:gpt-4o-mini',                         0.5, NULL, NULL, NULL, NOW(), 'seed'),
+    ('llm_primary',          'openai:gpt-4o',                             0.7, NULL, NULL, NULL, NOW(), 'seed'),
+    ('llm_secondary',        'openai:gpt-4o-mini',                         0.7, NULL, NULL, NULL, NOW(), 'seed')
 ON CONFLICT (service_name) DO NOTHING;
 
 -- Notes:

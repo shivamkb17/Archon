@@ -1,18 +1,20 @@
 """
-LLM Provider Service
+LLM Provider Service - Database Only
 
 Provides a unified interface for creating OpenAI-compatible clients for different LLM providers.
+Uses the provider_clean system for all configuration management - DATABASE ONLY.
 Supports OpenAI, Ollama, and Google Gemini.
 """
 
+import os
 import time
+import httpx
 from contextlib import asynccontextmanager
 from typing import Any
 
 import openai
 
 from ..config.logfire_config import get_logger
-from .credential_service import credential_service
 
 logger = get_logger(__name__)
 
@@ -38,13 +40,119 @@ def _set_cached_settings(key: str, value: Any) -> None:
     _settings_cache[key] = (value, time.time())
 
 
+async def _get_api_key_from_database(provider: str) -> str:
+    """
+    Get API key directly from database using the working provider_clean services.
+    
+    Uses the exact same pattern as the successful API endpoints.
+    """
+    try:
+        # Use the working pattern: call the internal FastAPI app services
+        # The app.state services are initialized in main.py with working cipher
+        from starlette.applications import Starlette
+        from fastapi import FastAPI
+        
+        # Access the app context to get initialized services
+        # This is a bit of a hack, but it uses the working services
+        import asyncio
+        
+        # Get the current running app instance that has working services
+        current_task = asyncio.current_task()
+        if hasattr(current_task, '_context') and current_task._context:
+            # Try to access FastAPI app state if available
+            pass
+            
+        # Alternative: Direct database access using the same exact pattern as working code
+        from ...providers_clean.infrastructure.dependencies import get_supabase_client, get_encryption_cipher  
+        from ...providers_clean.infrastructure.repositories.supabase.api_key_repository import SupabaseApiKeyRepository
+        
+        # Use exact same initialization as working endpoints
+        db = get_supabase_client()
+        cipher = get_encryption_cipher()
+        
+        # Create repository directly (skip Unit of Work complexity)
+        api_key_repo = SupabaseApiKeyRepository(db, cipher)
+        
+        # Get the key data directly
+        key_data = await api_key_repo.get_key(provider)
+        if not key_data:
+            raise ValueError(f"API key for provider '{provider}' not found in database")
+            
+        # Decrypt the key directly
+        encrypted_key = key_data.get("encrypted_key")
+        if not encrypted_key:
+            raise ValueError(f"No encrypted key data for provider '{provider}'")
+            
+        try:
+            decrypted_key = cipher.decrypt(encrypted_key.encode()).decode()
+            logger.info(f"Successfully decrypted API key for provider '{provider}'")
+            return decrypted_key
+        except Exception as decrypt_error:
+            raise ValueError(f"Failed to decrypt API key for provider '{provider}': {decrypt_error}")
+            
+    except Exception as e:
+        logger.error(f"Database API key access failed for {provider}: {e}")
+        raise
+
+
+async def _get_provider_config(service_name: str) -> dict[str, Any]:
+    """Get provider configuration from database only."""
+    cache_key = f"provider_config_{service_name}"
+    config = _get_cached_settings(cache_key)
+    
+    if config is not None:
+        return config
+    
+    try:
+        server_port = os.getenv("ARCHON_SERVER_PORT", "8181")
+        
+        async with httpx.AsyncClient() as client:
+            # Get service configuration via API
+            service_response = await client.get(
+                f"http://localhost:{server_port}/api/providers/services/{service_name}"
+            )
+            if service_response.status_code != 200:
+                raise ValueError(f"Service '{service_name}' not found")
+                
+            service_config = service_response.json()
+            
+            # Extract provider and model  
+            default_model = service_config.get("default_model")
+            if not default_model or ":" not in default_model:
+                raise ValueError(f"Invalid default_model '{default_model}' for service '{service_name}'")
+                
+            provider, model = default_model.split(":", 1)
+            
+            # Get API key from database only
+            api_key = await _get_api_key_from_database(provider)
+            
+            # Base URL mapping
+            base_urls = {
+                "google": "https://generativelanguage.googleapis.com/v1beta/openai/",
+                "gemini": "https://generativelanguage.googleapis.com/v1beta/openai/", 
+                "ollama": "http://host.docker.internal:11434/v1"
+            }
+            
+            config = {
+                "provider": provider,
+                "model": model,
+                "api_key": api_key,
+                "base_url": base_urls.get(provider),
+                "service_config": service_config
+            }
+            
+            _set_cached_settings(cache_key, config)
+            return config
+            
+    except Exception as e:
+        logger.error(f"Provider config failed for {service_name}: {e}")
+        raise ValueError(f"Cannot get provider config for {service_name}: {str(e)}")
+
+
 @asynccontextmanager
 async def get_llm_client(provider: str | None = None, use_embedding_provider: bool = False):
     """
-    Create an async OpenAI-compatible client based on the configured provider.
-
-    This context manager handles client creation for different LLM providers
-    that support the OpenAI API format.
+    Create an async OpenAI-compatible client - DATABASE ONLY for API keys.
 
     Args:
         provider: Override provider selection
@@ -56,38 +164,32 @@ async def get_llm_client(provider: str | None = None, use_embedding_provider: bo
     client = None
 
     try:
-        # Get provider configuration from database settings
         if provider:
-            # Explicit provider requested - get minimal config
+            # Explicit provider requested - get API key from database
             provider_name = provider
-            api_key = await credential_service._get_provider_api_key(provider)
-
-            # Check cache for rag_settings
-            cache_key = "rag_strategy_settings"
-            rag_settings = _get_cached_settings(cache_key)
-            if rag_settings is None:
-                rag_settings = await credential_service.get_credentials_by_category("rag_strategy")
-                _set_cached_settings(cache_key, rag_settings)
+            api_key = await _get_api_key_from_database(provider)
             
-            base_url = credential_service._get_provider_base_url(provider, rag_settings)
+            # Base URL mapping
+            base_urls = {
+                "google": "https://generativelanguage.googleapis.com/v1beta/openai/",
+                "gemini": "https://generativelanguage.googleapis.com/v1beta/openai/",
+                "ollama": "http://host.docker.internal:11434/v1"
+            }
+            base_url = base_urls.get(provider)
+                
         else:
-            # Get configured provider from database
-            service_type = "embedding" if use_embedding_provider else "llm"
+            # Get configured provider from provider_clean system
+            service_name = "embedding" if use_embedding_provider else "llm_primary"
+            config = await _get_provider_config(service_name)
+            
+            provider_name = config["provider"]
+            api_key = config["api_key"]
+            base_url = config["base_url"]
 
-            # Check cache for provider config
-            cache_key = f"provider_config_{service_type}"
-            provider_config = _get_cached_settings(cache_key)
-            if provider_config is None:
-                provider_config = await credential_service.get_active_provider(service_type)
-                _set_cached_settings(cache_key, provider_config)
-
-            provider_name = provider_config["provider"]
-            api_key = provider_config["api_key"]
-            base_url = provider_config["base_url"]
-
+        # Create OpenAI-compatible client with strict validation
         if provider_name == "openai":
             if not api_key:
-                raise ValueError("OpenAI API key not found")
+                raise ValueError(f"OpenAI API key not found in database")
             client = openai.AsyncOpenAI(api_key=api_key)
 
         elif provider_name == "ollama":
@@ -98,13 +200,13 @@ async def get_llm_client(provider: str | None = None, use_embedding_provider: bo
 
         elif provider_name == "google" or provider_name == "gemini":
             if not api_key:
-                raise ValueError("Google API key not found")
-            # Google requires a specific base URL for their OpenAI-compatible endpoint
-            base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
+                raise ValueError(f"Google API key not found in database")
+            if not base_url:
+                base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
             client = openai.AsyncOpenAI(base_url=base_url, api_key=api_key)
 
         else:
-            raise ValueError(f"Unsupported provider: {provider_name}")
+            raise ValueError(f"Unsupported provider '{provider_name}'. Supported: openai, google, gemini, ollama")
 
         yield client
 
@@ -119,90 +221,39 @@ async def get_llm_client(provider: str | None = None, use_embedding_provider: bo
 
 
 async def get_embedding_model(provider: str | None = None) -> str:
-    """
-    Get the configured embedding model based on the provider.
-
-    Args:
-        provider: Override provider selection
-
-    Returns:
-        str: The embedding model to use
-    """
+    """Get the configured embedding model from database only."""
     try:
-        # Get provider configuration
         if provider:
-            # Explicit provider requested
-            provider_name = provider
-            # Get custom model from settings if any
-            cache_key = "rag_strategy_settings"
-            rag_settings = _get_cached_settings(cache_key)
-            if rag_settings is None:
-                rag_settings = await credential_service.get_credentials_by_category("rag_strategy")
-                _set_cached_settings(cache_key, rag_settings)
-
-            custom_model = rag_settings.get("embedding_model") if rag_settings else None
+            # For explicit provider, get from service registry
+            config = await _get_provider_config("embedding")
+            if config["provider"] == provider:
+                return config["model"]
+            else:
+                raise ValueError(f"Provider mismatch: service uses '{config['provider']}', requested '{provider}'")
         else:
-            # Get configured provider from database
-            cache_key = "provider_config_embedding"
-            provider_config = _get_cached_settings(cache_key)
-            if provider_config is None:
-                provider_config = await credential_service.get_active_provider("embedding")
-                _set_cached_settings(cache_key, provider_config)
-
-            provider_name = provider_config["provider"]
-            custom_model = provider_config.get("custom_model")
-
-        # Return model based on provider - no defaults
-        if not custom_model:
-            raise ValueError(f"No embedding model configured for provider '{provider_name}'. Please configure in Settings.")
-        
-        return custom_model
+            # Get configured embedding service
+            config = await _get_provider_config("embedding")
+            return config["model"]
 
     except Exception as e:
         logger.error(f"Error getting embedding model: {e}")
         raise
 
 
-async def get_llm_model(provider: str | None = None, service: str = "rag_agent") -> str:
-    """
-    Get the configured LLM model based on the provider.
-
-    Args:
-        provider: Override provider selection
-        service: Service requesting the model (for future use)
-
-    Returns:
-        str: The LLM model to use
-    """
+async def get_llm_model(provider: str | None = None, service: str = "llm_primary") -> str:
+    """Get the configured LLM model from database only."""
     try:
-        # Get provider configuration
         if provider:
-            # Explicit provider requested
-            provider_name = provider
-            # Get custom model from settings if any
-            cache_key = "rag_strategy_settings"
-            rag_settings = _get_cached_settings(cache_key)
-            if rag_settings is None:
-                rag_settings = await credential_service.get_credentials_by_category("rag_strategy")
-                _set_cached_settings(cache_key, rag_settings)
-
-            custom_model = rag_settings.get("llm_model") if rag_settings else None
+            # For explicit provider, get from service registry
+            config = await _get_provider_config(service)
+            if config["provider"] == provider:
+                return config["model"]
+            else:
+                raise ValueError(f"Provider mismatch: service uses '{config['provider']}', requested '{provider}'")
         else:
-            # Get configured provider from database
-            cache_key = "provider_config_llm"
-            provider_config = _get_cached_settings(cache_key)
-            if provider_config is None:
-                provider_config = await credential_service.get_active_provider("llm")
-                _set_cached_settings(cache_key, provider_config)
-
-            provider_name = provider_config["provider"]
-            custom_model = provider_config.get("custom_model")
-
-        # Return model - no defaults
-        if not custom_model:
-            raise ValueError(f"No LLM model configured for provider '{provider_name}' and service '{service}'. Please configure in Settings.")
-        
-        return custom_model
+            # Get configured LLM service
+            config = await _get_provider_config(service)
+            return config["model"]
 
     except Exception as e:
         logger.error(f"Error getting LLM model: {e}")

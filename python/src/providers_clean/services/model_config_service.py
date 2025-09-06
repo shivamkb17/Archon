@@ -13,6 +13,8 @@ class ModelConfig(BaseModel):
     model_string: str = Field(..., description="PydanticAI model string (e.g., 'openai:gpt-4o')")
     temperature: float = Field(0.7, ge=0.0, le=2.0, description="Temperature for model generation")
     max_tokens: Optional[int] = Field(None, gt=0, description="Maximum tokens for generation")
+    embedding_dimensions: Optional[int] = Field(None, gt=0, description="Embedding dimensions for embedding models")
+    batch_size: Optional[int] = Field(None, gt=0, description="Batch size for processing")
 
 
 class ModelConfigService:

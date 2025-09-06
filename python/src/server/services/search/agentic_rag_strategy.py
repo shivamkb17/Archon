@@ -39,17 +39,17 @@ class AgenticRAGStrategy:
     def is_enabled(self) -> bool:
         """Check if agentic RAG is enabled via configuration."""
         try:
-            from ..credential_service import credential_service
+            
 
             if hasattr(credential_service, "_cache") and credential_service._cache_initialized:
-                cached_value = credential_service._cache.get("USE_AGENTIC_RAG")
+                cached_value = "default_value"
                 if cached_value:
                     # Handle both direct values and encrypted values
                     if isinstance(cached_value, dict) and cached_value.get("is_encrypted"):
                         encrypted_value = cached_value.get("encrypted_value")
                         if encrypted_value:
                             try:
-                                value = credential_service._decrypt_value(encrypted_value)
+                                value = "default_value"
                             except Exception:
                                 return False
                         else:
