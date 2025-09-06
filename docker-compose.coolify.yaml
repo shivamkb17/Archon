@@ -1,0 +1,232 @@
+# Coolify Docker Compose Configuration for Archon
+# This file is optimized for Coolify deployment platform
+# 
+# Features:
+# - Uses pre-built images from GitHub Container Registry
+# - Coolify-specific labels for management
+# - Traefik integration for automatic HTTPS
+# - Environment variable validation
+# - Health checks for all services
+#
+# Usage in Coolify:
+# 1. Create new application in Coolify
+# 2. Select "Docker Compose" deployment method
+# 3. Upload this file and configure environment variables
+# 4. Deploy
+
+version: '3.8'
+
+services:
+  # Main Server Service (FastAPI + Web crawling + Document processing)
+  archon-server:
+    image: ghcr.io/shivamkb17/archon-server:latest
+    container_name: archon-server
+    restart: unless-stopped
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL:?}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY:?}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - LOGFIRE_TOKEN=${LOGFIRE_TOKEN:-}
+      - SERVICE_DISCOVERY_MODE=docker_compose
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - ARCHON_SERVER_PORT=8181
+      - ARCHON_MCP_PORT=8051
+      - ARCHON_AGENTS_PORT=8052
+      - AGENTS_ENABLED=${AGENTS_ENABLED:-false}
+    networks:
+      - archon-network
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "sh",
+          "-c",
+          'python -c "import urllib.request; urllib.request.urlopen(''http://localhost:8181/health'')"',
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - coolify.managed=true
+      - coolify.type=application
+      - traefik.enable=true
+      - traefik.http.routers.archon-server.rule=Host(`${DOMAIN:?}`) && PathPrefix(`/api`)
+      - traefik.http.routers.archon-server.entryPoints=websecure
+      - traefik.http.routers.archon-server.tls=true
+      - traefik.http.services.archon-server.loadbalancer.server.port=8181
+      - traefik.http.middlewares.archon-server-stripprefix.stripprefix.prefixes=/api
+      - traefik.http.routers.archon-server.middlewares=archon-server-stripprefix
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  # MCP Server Service (HTTP-based)
+  archon-mcp:
+    image: ghcr.io/shivamkb17/archon-mcp:latest
+    container_name: archon-mcp
+    restart: unless-stopped
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL:?}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY:?}
+      - LOGFIRE_TOKEN=${LOGFIRE_TOKEN:-}
+      - SERVICE_DISCOVERY_MODE=docker_compose
+      - TRANSPORT=sse
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - API_SERVICE_URL=http://archon-server:8181
+      - AGENTS_ENABLED=${AGENTS_ENABLED:-false}
+      - AGENTS_SERVICE_URL=${AGENTS_SERVICE_URL:-http://archon-agents:8052}
+      - ARCHON_MCP_PORT=8051
+      - ARCHON_SERVER_PORT=8181
+      - ARCHON_AGENTS_PORT=8052
+    networks:
+      - archon-network
+    depends_on:
+      archon-server:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "sh",
+          "-c",
+          'python -c "import socket; s=socket.socket(); s.connect((''localhost'', 8051)); s.close()"',
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    labels:
+      - coolify.managed=true
+      - coolify.type=application
+      - traefik.enable=true
+      - traefik.http.routers.archon-mcp.rule=Host(`${DOMAIN:?}`) && PathPrefix(`/mcp`)
+      - traefik.http.routers.archon-mcp.entryPoints=websecure
+      - traefik.http.routers.archon-mcp.tls=true
+      - traefik.http.services.archon-mcp.loadbalancer.server.port=8051
+      - traefik.http.middlewares.archon-mcp-stripprefix.stripprefix.prefixes=/mcp
+      - traefik.http.routers.archon-mcp.middlewares=archon-mcp-stripprefix
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+  # AI Agents Service (ML/Reranking) - Optional
+  archon-agents:
+    profiles:
+      - agents
+    image: ghcr.io/shivamkb17/archon-agents:latest
+    container_name: archon-agents
+    restart: unless-stopped
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL:?}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY:?}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - LOGFIRE_TOKEN=${LOGFIRE_TOKEN:-}
+      - SERVICE_DISCOVERY_MODE=docker_compose
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - ARCHON_AGENTS_PORT=8052
+      - ARCHON_SERVER_PORT=8181
+    networks:
+      - archon-network
+    depends_on:
+      archon-server:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "sh",
+          "-c",
+          'python -c "import urllib.request; urllib.request.urlopen(''http://localhost:8052/health'')"',
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - coolify.managed=true
+      - coolify.type=application
+      - traefik.enable=true
+      - traefik.http.routers.archon-agents.rule=Host(`${DOMAIN:?}`) && PathPrefix(`/agents`)
+      - traefik.http.routers.archon-agents.entryPoints=websecure
+      - traefik.http.routers.archon-agents.tls=true
+      - traefik.http.services.archon-agents.loadbalancer.server.port=8052
+      - traefik.http.middlewares.archon-agents-stripprefix.stripprefix.prefixes=/agents
+      - traefik.http.routers.archon-agents.middlewares=archon-agents-stripprefix
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  # Frontend Service (React + Vite)
+  archon-frontend:
+    image: ghcr.io/shivamkb17/archon-frontend:latest
+    container_name: archon-frontend
+    restart: unless-stopped
+    environment:
+      - VITE_API_URL=https://${DOMAIN:?}/api
+      - VITE_ARCHON_SERVER_PORT=8181
+      - ARCHON_SERVER_PORT=8181
+      - HOST=${DOMAIN:?}
+      - PROD=true
+      - VITE_ALLOWED_HOSTS=${DOMAIN:?}
+      - VITE_SHOW_DEVTOOLS=false
+    networks:
+      - archon-network
+    depends_on:
+      archon-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3737"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      - coolify.managed=true
+      - coolify.type=application
+      - traefik.enable=true
+      - traefik.http.routers.archon-frontend.rule=Host(`${DOMAIN:?}`)
+      - traefik.http.routers.archon-frontend.entryPoints=websecure
+      - traefik.http.routers.archon-frontend.tls=true
+      - traefik.http.services.archon-frontend.loadbalancer.server.port=3737
+      - traefik.http.routers.archon-frontend.priority=1
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 128M
+          cpus: '0.25'
+
+networks:
+  archon-network:
+    driver: bridge
+    name: archon-network
+    external: false
+
+# Optional: Named volumes for persistent data
+volumes:
+  archon-data:
+    name: archon-data
+    external: false
