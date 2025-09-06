@@ -14,11 +14,13 @@ logger = logging.getLogger(__name__)
 class EmbeddingTableRouter:
     """Routes embedding operations to dimension-specific tables."""
     
-    # Supported dimensions and their corresponding table names
+    # Supported dimensions and their corresponding table names (provider-agnostic)
     DIMENSION_TABLES = {
-        768: "archon_crawled_pages_768",    # Google text-embedding-004
-        1536: "archon_crawled_pages_1536", # OpenAI text-embedding-3-small, ada-002
-        3072: "archon_crawled_pages_3072"  # OpenAI text-embedding-3-large
+        384: "archon_crawled_pages_384",   # Cohere light, Ollama all-minilm
+        768: "archon_crawled_pages_768",   # Google, Ollama nomic-embed
+        1024: "archon_crawled_pages_1024", # Cohere standard, Mistral, Ollama mxbai
+        1536: "archon_crawled_pages_1536", # OpenAI small/ada-002
+        3072: "archon_crawled_pages_3072"  # OpenAI large
     }
     
     @classmethod

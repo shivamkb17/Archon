@@ -184,26 +184,20 @@ async def create_embeddings_batch(
             async with get_llm_client(use_embedding_provider=True) as client:
                 # Get embedding model from provider_clean system  
                 model = await get_embedding_model()
-                # Get embedding dimensions and batch size from model_config table
-                server_port = os.getenv("ARCHON_SERVER_PORT", "8181")
-                async with httpx.AsyncClient() as settings_client:
-                    # Get model config for embedding service from provider_clean API
-                    config_response = await settings_client.get(f"http://localhost:{server_port}/api/providers/models/config/embedding")
-                    if config_response.status_code == 200:
-                        model_config = config_response.json()
-                        
-                        # Get settings from model_config table
-                        batch_size = model_config.get("batch_size", 100)
-                        embedding_dimensions = model_config.get("embedding_dimensions")
-                        
-                        if embedding_dimensions:
-                            search_logger.info(f"Using model_config dimensions {embedding_dimensions} for service embedding")
-                        else:
-                            # Model config exists but no dimensions field yet - don't specify dimensions
-                            embedding_dimensions = None
-                            search_logger.info(f"Model config found but no embedding_dimensions field yet, using API default")
-                    else:
-                        raise ValueError("Failed to get model config for embedding service from provider_clean API")
+                # Get provider-specific optimization settings from database
+                from ..provider_optimization_service import ProviderOptimizationService
+                
+                optimization = await ProviderOptimizationService.get_provider_optimization("embedding")
+                
+                provider = optimization["provider"]
+                embedding_dimensions = optimization["embedding_dimensions"]
+                batch_size = optimization["batch_size"]
+                supports_dimensions = optimization["supports_dimensions"]
+                
+                search_logger.info(
+                    f"Using provider {provider}: {embedding_dimensions} dimensions, "
+                    f"batch_size={batch_size}, supports_dimensions={supports_dimensions}"
+                )
 
                 total_tokens_used = 0
 
@@ -232,14 +226,15 @@ async def create_embeddings_batch(
 
                             while retry_count < max_retries:
                                 try:
-                                    # Create embeddings for this batch using the configured model
-                                    if embedding_dimensions is not None:
+                                    # Create embeddings using provider-aware API call
+                                    if supports_dimensions and embedding_dimensions is not None:
                                         response = await client.embeddings.create(
                                             model=model,
                                             input=batch,
                                             dimensions=embedding_dimensions,
                                         )
                                     else:
+                                        # Provider doesn't support dimensions param or dimensions not specified
                                         response = await client.embeddings.create(
                                             model=model,
                                             input=batch,
