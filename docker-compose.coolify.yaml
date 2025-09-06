@@ -41,12 +41,10 @@ services:
       - "host.docker.internal:host-gateway"
     healthcheck:
       test:
-        [
-          "CMD",
-          "sh",
-          "-c",
-          'python -c "import urllib.request; urllib.request.urlopen(''http://localhost:8181/health'')"',
-        ]
+        - CMD
+        - sh
+        - -c
+        - 'python -c "import urllib.request; urllib.request.urlopen(''http://localhost:8181/health'')"'
       interval: 30s
       timeout: 10s
       retries: 3
@@ -84,7 +82,7 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - API_SERVICE_URL=http://archon-server:8181
       - AGENTS_ENABLED=${AGENTS_ENABLED:-false}
-      - AGENTS_SERVICE_URL=${AGENTS_SERVICE_URL:-http://archon-agents:8052}
+      - AGENTS_SERVICE_URL=http://archon-agents:8052
       - ARCHON_MCP_PORT=8051
       - ARCHON_SERVER_PORT=8181
       - ARCHON_AGENTS_PORT=8052
@@ -97,12 +95,10 @@ services:
       - "host.docker.internal:host-gateway"
     healthcheck:
       test:
-        [
-          "CMD",
-          "sh",
-          "-c",
-          'python -c "import socket; s=socket.socket(); s.connect((''localhost'', 8051)); s.close()"',
-        ]
+        - CMD
+        - sh
+        - -c
+        - 'python -c "import socket; s=socket.socket(); s.connect((''localhost'', 8051)); s.close()"'
       interval: 30s
       timeout: 10s
       retries: 3
@@ -149,12 +145,10 @@ services:
         condition: service_healthy
     healthcheck:
       test:
-        [
-          "CMD",
-          "sh",
-          "-c",
-          'python -c "import urllib.request; urllib.request.urlopen(''http://localhost:8052/health'')"',
-        ]
+        - CMD
+        - sh
+        - -c
+        - 'python -c "import urllib.request; urllib.request.urlopen(''http://localhost:8052/health'')"'
       interval: 30s
       timeout: 10s
       retries: 3
@@ -197,7 +191,11 @@ services:
       archon-server:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3737"]
+      test: 
+        - CMD
+        - curl
+        - -f
+        - http://localhost:3737
       interval: 30s
       timeout: 10s
       retries: 3
