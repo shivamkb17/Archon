@@ -8,8 +8,6 @@ The MCP container is managed by docker-compose, not by this API.
 import os
 from typing import Any
 
-import docker
-from docker.errors import NotFound
 from fastapi import APIRouter, HTTPException
 
 # Import unified logging
@@ -19,59 +17,71 @@ router = APIRouter(prefix="/api/mcp", tags=["mcp"])
 
 
 def get_container_status() -> dict[str, Any]:
-    """Get simple MCP container status without Docker management."""
-    docker_client = None
+    """Get MCP server status by checking HTTP endpoint."""
     try:
-        docker_client = docker.from_env()
-        api_logger.info("Docker client connected successfully")
-        container = docker_client.containers.get("archon-mcp")
-
-        # Get container status
-        container_status = container.status
-
-        # Map Docker statuses to simple statuses
-        if container_status == "running":
-            status = "running"
-            # Try to get uptime from container info
-            try:
-                from datetime import datetime
-                started_at = container.attrs["State"]["StartedAt"]
-                started_time = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
-                uptime = int((datetime.now(started_time.tzinfo) - started_time).total_seconds())
-            except Exception:
-                uptime = None
-        else:
-            status = "stopped"
-            uptime = None
-
-        return {
-            "status": status,
-            "uptime": uptime,
-            "logs": [],  # No log streaming anymore
-            "container_status": container_status
-        }
-
-    except NotFound:
-        # Try to list available containers to help with debugging
-        available_containers = []
-        try:
-            if docker_client:
-                containers = docker_client.containers.list(all=True)
-                available_containers = [c.name for c in containers]
-                api_logger.info(f"Available containers: {available_containers}")
-        except Exception as e:
-            api_logger.error(f"Failed to list containers: {e}")
+        import requests
+        import time
         
-        return {
-            "status": "not_found",
-            "uptime": None,
-            "logs": [],
-            "container_status": "not_found",
-            "message": f"MCP container 'archon-mcp' not found. Available containers: {available_containers}",
-            "available_containers": available_containers
-        }
+        # Get MCP service URL from environment
+        mcp_port = os.getenv("ARCHON_MCP_PORT", "8051")
+        mcp_url = f"http://archon-mcp:{mcp_port}/mcp"
+        
+        api_logger.info(f"Checking MCP server at {mcp_url}")
+        
+        # Try to make a simple HTTP request to check if MCP server is responding
+        # Since FastMCP uses streamable-http, we'll try to connect to the MCP endpoint
+        try:
+            response = requests.get(f"http://archon-mcp:{mcp_port}/mcp", timeout=5)
+            # If we get any response (even 404), the server is running
+            if response.status_code in [200, 404, 405]:  # 405 = Method Not Allowed is expected for GET on MCP endpoint
+                return {
+                    "status": "running",
+                    "uptime": None,  # Can't get uptime from HTTP check
+                    "logs": [],
+                    "container_status": "running",
+                    "mcp_url": mcp_url,
+                    "http_status": response.status_code
+                }
+            else:
+                return {
+                    "status": "error",
+                    "uptime": None,
+                    "logs": [],
+                    "container_status": f"http_{response.status_code}",
+                    "mcp_url": mcp_url,
+                    "http_status": response.status_code
+                }
+        except requests.exceptions.ConnectionError:
+            # Connection refused - server not running
+            return {
+                "status": "not_found",
+                "uptime": None,
+                "logs": [],
+                "container_status": "connection_refused",
+                "mcp_url": mcp_url,
+                "message": f"MCP server not responding at {mcp_url}"
+            }
+        except requests.exceptions.Timeout:
+            return {
+                "status": "timeout",
+                "uptime": None,
+                "logs": [],
+                "container_status": "timeout",
+                "mcp_url": mcp_url,
+                "message": f"MCP server timeout at {mcp_url}"
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "uptime": None,
+                "logs": [],
+                "container_status": "error",
+                "mcp_url": mcp_url,
+                "error": str(e)
+            }
+
     except Exception as e:
-        api_logger.error("Failed to get container status", exc_info=True)
+        api_logger.error("Failed to get MCP server status", exc_info=True)
         return {
             "status": "error",
             "uptime": None,
@@ -80,12 +90,6 @@ def get_container_status() -> dict[str, Any]:
             "error": str(e),
             "error_type": type(e).__name__
         }
-    finally:
-        if docker_client is not None:
-            try:
-                docker_client.close()
-            except Exception:
-                pass
 
 
 @router.get("/status")
