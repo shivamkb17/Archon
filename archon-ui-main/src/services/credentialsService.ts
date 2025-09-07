@@ -20,9 +20,6 @@ export interface RagSettings {
   LLM_PROVIDER?: string;
   LLM_BASE_URL?: string;
   EMBEDDING_MODEL?: string;
-  // Azure OpenAI specific settings
-  AZURE_OPENAI_ENDPOINT?: string;
-  AZURE_OPENAI_DEPLOYMENT?: string;
   // Crawling Performance Settings
   CRAWL_BATCH_SIZE?: number;
   CRAWL_MAX_CONCURRENT?: number;
@@ -156,9 +153,6 @@ class CredentialsService {
       LLM_PROVIDER: "openai",
       LLM_BASE_URL: "",
       EMBEDDING_MODEL: "",
-      // Azure OpenAI defaults
-      AZURE_OPENAI_ENDPOINT: "",
-      AZURE_OPENAI_DEPLOYMENT: "",
       // Crawling Performance Settings defaults
       CRAWL_BATCH_SIZE: 50,
       CRAWL_MAX_CONCURRENT: 10,
@@ -187,8 +181,6 @@ class CredentialsService {
             "LLM_PROVIDER",
             "LLM_BASE_URL",
             "EMBEDDING_MODEL",
-            "AZURE_OPENAI_ENDPOINT",
-            "AZURE_OPENAI_DEPLOYMENT",
             "CRAWL_WAIT_STRATEGY",
           ].includes(cred.key)
         ) {
