@@ -32,8 +32,8 @@ def get_container_status() -> dict[str, Any]:
         # Since FastMCP uses streamable-http, we'll try to connect to the MCP endpoint
         try:
             response = requests.get(f"http://archon-mcp:{mcp_port}/mcp", timeout=5)
-            # If we get any response (even 404), the server is running
-            if response.status_code in [200, 404, 405]:  # 405 = Method Not Allowed is expected for GET on MCP endpoint
+            # If we get any response (even 404, 405, 406), the server is running
+            if response.status_code in [200, 404, 405, 406]:  # 406 = Not Acceptable is expected for GET on MCP endpoint
                 return {
                     "status": "running",
                     "uptime": None,  # Can't get uptime from HTTP check
