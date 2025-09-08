@@ -47,26 +47,34 @@ def get_supabase_client() -> Client:
 
 @lru_cache()
 def get_encryption_cipher() -> Fernet:
-    """Get or create encryption cipher for API keys.
-    
+    """Get encryption cipher for API keys using a required environment key.
+
+    Alpha policy: fail fast on missing/invalid configuration. Do not generate
+    ad-hoc keys that would make previously stored secrets undecipherable.
+
     Returns:
         Fernet cipher instance
+
+    Raises:
+        HTTPException: If the `ENCRYPTION_KEY` env var is missing or invalid
     """
-    # Try to get encryption key from environment
     encryption_key = os.environ.get("ENCRYPTION_KEY")
-    
-    if encryption_key:
-        try:
-            return Fernet(encryption_key.encode())
-        except Exception:
-            # Invalid key format, generate new one
-            pass
-    
-    # Generate a new key if none exists or invalid
-    # In production, this should be stored securely
-    new_key = Fernet.generate_key()
-    os.environ["ENCRYPTION_KEY"] = new_key.decode()
-    return Fernet(new_key)
+    if not encryption_key:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=(
+                "ENCRYPTION_KEY environment variable is required for API key encryption/decryption."
+            ),
+        )
+    try:
+        return Fernet(encryption_key.encode())
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=(
+                "Invalid ENCRYPTION_KEY format. Provide a valid base64-encoded 32-byte key."
+            ),
+        )
 
 
 def get_unit_of_work(

@@ -101,7 +101,10 @@ async def lifespan(app: FastAPI):
         
         # Initialize provider clean services
         try:
-            from ..providers_clean.infrastructure.dependencies import get_supabase_client
+            from ..providers_clean.infrastructure.dependencies import (
+                get_supabase_client,
+                get_encryption_cipher,
+            )
             from ..providers_clean.services import APIKeyService, ServiceRegistryService
             from ..providers_clean.infrastructure.unit_of_work.supabase_uow import SupabaseUnitOfWork
             
@@ -109,7 +112,9 @@ async def lifespan(app: FastAPI):
             supabase_client = get_supabase_client()
             if supabase_client:
                 # Initialize provider clean services
-                uow = SupabaseUnitOfWork(supabase_client)
+                # Use a single stable cipher derived from ENCRYPTION_KEY
+                cipher = get_encryption_cipher()
+                uow = SupabaseUnitOfWork(supabase_client, cipher)
                 api_key_service = APIKeyService(uow)
                 service_registry = ServiceRegistryService(uow)
                 

@@ -40,7 +40,8 @@ class SupabaseApiKeyRepository(IApiKeyRepository):
                 "is_active": True,
                 "updated_at": datetime.utcnow().isoformat(),
                 "base_url": metadata.get("base_url") if metadata else None,
-                "headers": metadata if metadata and "base_url" not in metadata else None
+                # Preserve any additional metadata besides base_url in headers column
+                "headers": ({k: v for k, v in metadata.items() if k != "base_url"} if metadata else None),
             }
             
             # Check if ANY record exists for provider (active or inactive)
@@ -53,7 +54,7 @@ class SupabaseApiKeyRepository(IApiKeyRepository):
                     "is_active": True,
                     "updated_at": datetime.utcnow().isoformat(),
                     "base_url": metadata.get("base_url") if metadata else None,
-                    "headers": metadata if metadata and "base_url" not in metadata else None
+                    "headers": ({k: v for k, v in metadata.items() if k != "base_url"} if metadata else None),
                 }).eq("provider", provider).execute()
             else:
                 # Insert new key

@@ -1228,9 +1228,7 @@
       },
       "per_request_limits": null,
       "supported_parameters": [
-        "include_reasoning",
         "max_tokens",
-        "reasoning",
         "response_format",
         "seed",
         "structured_outputs"
@@ -10881,7 +10879,6 @@
       "per_request_limits": null,
       "supported_parameters": [
         "frequency_penalty",
-        "logit_bias",
         "max_tokens",
         "min_p",
         "presence_penalty",

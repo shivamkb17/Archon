@@ -2,7 +2,7 @@
 
 import logging
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 from pydantic import BaseModel, Field
 from ..core.interfaces.unit_of_work import IUnitOfWork
 
@@ -501,7 +501,7 @@ class ServiceRegistryService:
                     'sum(estimated_cost) as total_cost, '
                     'avg(avg_tokens_per_request) as avg_tokens_per_request'
                 ).gte(
-                    'period_start', (from_date - datetime.timedelta(days=days)).isoformat()
+                    'period_start', (from_date - timedelta(days=days)).isoformat()
                 ).group_by(
                     'service_name, service_display_name, category, service_type, '
                     'model_type, cost_profile, owner_team, location'

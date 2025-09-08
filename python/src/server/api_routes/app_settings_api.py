@@ -6,6 +6,7 @@ These are stored in the archon_settings table and include RAG strategy flags.
 """
 
 import logging
+import os
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 from typing import Dict, Any
@@ -93,7 +94,8 @@ async def get_rag_strategy_settings():
             import httpx
             async with httpx.AsyncClient() as client:
                 # Get LLM service
-                llm_response = await client.get("http://localhost:8181/api/providers/services/llm_primary")
+                server_port = os.getenv("ARCHON_SERVER_PORT", "8181")
+                llm_response = await client.get(f"http://localhost:{server_port}/api/providers/services/llm_primary")
                 if llm_response.status_code == 200:
                     llm_service = llm_response.json()
                     default_model = llm_service.get("default_model", "")
@@ -103,7 +105,7 @@ async def get_rag_strategy_settings():
                         provider_settings["MODEL_CHOICE"] = model
                 
                 # Get embedding service  
-                embed_response = await client.get("http://localhost:8181/api/providers/services/embedding")
+                embed_response = await client.get(f"http://localhost:{server_port}/api/providers/services/embedding")
                 if embed_response.status_code == 200:
                     embed_service = embed_response.json()
                     default_model = embed_service.get("default_model", "")

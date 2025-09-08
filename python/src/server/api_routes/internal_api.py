@@ -77,13 +77,14 @@ async def get_agent_credentials(request: Request) -> dict[str, Any]:
         
         # Get app settings
         async with httpx.AsyncClient() as client:
-            settings_response = await client.get("http://localhost:8181/api/app-settings")
+            server_port = os.getenv("ARCHON_SERVER_PORT", "8181")
+            settings_response = await client.get(f"http://localhost:{server_port}/api/app-settings")
             if not settings_response.is_success:
                 raise HTTPException(status_code=500, detail="Failed to get app settings")
             app_settings = settings_response.json()
             
             # Get agent service models from provider_clean
-            services_response = await client.get("http://localhost:8181/api/providers/services/agents")
+            services_response = await client.get(f"http://localhost:{server_port}/api/providers/services/agents")
             if not services_response.is_success:
                 raise HTTPException(status_code=500, detail="Failed to get agent service configurations")
             
@@ -141,7 +142,8 @@ async def get_mcp_credentials(request: Request) -> dict[str, Any]:
         # Get app settings for MCP service
         import httpx
         async with httpx.AsyncClient() as client:
-            settings_response = await client.get("http://localhost:8181/api/app-settings")
+            server_port = os.getenv("ARCHON_SERVER_PORT", "8181")
+            settings_response = await client.get(f"http://localhost:{server_port}/api/app-settings")
             if not settings_response.is_success:
                 raise HTTPException(status_code=500, detail="Failed to get app settings")
             app_settings = settings_response.json()

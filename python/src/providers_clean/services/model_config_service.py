@@ -9,46 +9,53 @@ from ..core.interfaces.repositories import IModelConfigRepository
 
 class ModelConfig(BaseModel):
     """Configuration for a PydanticAI model."""
-    service_name: str = Field(..., description="Name of the service (e.g., 'rag_agent')")
-    model_string: str = Field(..., description="PydanticAI model string (e.g., 'openai:gpt-4o')")
-    temperature: float = Field(0.7, ge=0.0, le=2.0, description="Temperature for model generation")
-    max_tokens: Optional[int] = Field(None, gt=0, description="Maximum tokens for generation")
-    embedding_dimensions: Optional[int] = Field(None, gt=0, description="Embedding dimensions for embedding models")
-    batch_size: Optional[int] = Field(None, gt=0, description="Batch size for processing")
+    service_name: str = Field(...,
+                              description="Name of the service (e.g., 'rag_agent')")
+    model_string: str = Field(...,
+                              description="PydanticAI model string (e.g., 'openai:gpt-4o')")
+    temperature: float = Field(
+        0.7, ge=0.0, le=2.0, description="Temperature for model generation")
+    max_tokens: Optional[int] = Field(
+        None, gt=0, description="Maximum tokens for generation")
+    embedding_dimensions: Optional[int] = Field(
+        None, gt=0, description="Embedding dimensions for embedding models")
+    batch_size: Optional[int] = Field(
+        None, gt=0, description="Batch size for processing")
 
 
 class ModelConfigService:
     """Service for managing model configurations using repository pattern."""
-    
+
     VALID_PROVIDERS = [
-        "openai", "anthropic", "google", "groq", "mistral", 
+        "openai", "anthropic", "google", "groq", "mistral",
         "cohere", "ai21", "replicate", "together", "fireworks",
         "openrouter", "deepseek", "xai", "ollama"
     ]
-    
+
     def __init__(self, unit_of_work: IUnitOfWork):
         """Initialize service with Unit of Work.
-        
+
         Args:
             unit_of_work: Unit of Work for managing repository operations
         """
         self.uow = unit_of_work
-    
+
     async def get_model_config(self, service_name: str) -> ModelConfig:
         """Get model configuration for a service.
-        
+
         Args:
             service_name: Name of the service
-            
+
         Returns:
             ModelConfig instance
         """
         async with self.uow:
             config = await self.uow.model_configs.get_config(service_name)
             if not config:
-                raise ValueError(f"Configuration not found for service '{service_name}'")
+                raise ValueError(
+                    f"Configuration not found for service '{service_name}'")
             return ModelConfig(**config)
-    
+
     async def set_model_config(
         self,
         service_name: str,
@@ -57,51 +64,51 @@ class ModelConfigService:
         max_tokens: Optional[int] = None
     ) -> ModelConfig:
         """Set model configuration for a service.
-        
+
         Args:
             service_name: Name of the service
             model_string: Model string (e.g., 'openai:gpt-4o')
             temperature: Optional temperature override
             max_tokens: Optional max tokens override
-            
+
         Returns:
             Updated ModelConfig
-            
+
         Raises:
             ValueError: If model string is invalid
         """
-        # Validate model string
-        self.validate_model_string(model_string)
-        
+        # Validate model string and get canonical version
+        canonical_model_string = self.validate_model_string(model_string)
+
         config_data = {
-            "model_string": model_string,
+            "model_string": canonical_model_string,
             "temperature": temperature or 0.7,
             "max_tokens": max_tokens
         }
-        
+
         async with self.uow:
             saved_config = await self.uow.model_configs.save_config(service_name, config_data)
             await self.uow.commit()
-            
+
             # saved_config already contains service_name, don't pass it again
             return ModelConfig(**saved_config)
-    
+
     async def get_all_configs(self) -> Dict[str, str]:
         """Get all service configurations.
-        
+
         Returns:
             Dictionary mapping service names to model strings
         """
         async with self.uow:
             configs = await self.uow.model_configs.get_all_configs()
             return configs
-    
+
     async def delete_config(self, service_name: str) -> bool:
         """Delete configuration for a service.
-        
+
         Args:
             service_name: Name of the service
-            
+
         Returns:
             True if deleted, False if not found
         """
@@ -109,42 +116,67 @@ class ModelConfigService:
             result = await self.uow.model_configs.delete_config(service_name)
             await self.uow.commit()
             return result
-    
-    def validate_model_string(self, model_string: str) -> bool:
-        """Validate a model string format.
-        
+
+    def validate_model_string(self, model_string: str) -> str:
+        """Validate a model string format and return the canonical version.
+
         Args:
             model_string: Model string to validate
-            
+
         Returns:
-            True if valid
-            
+            Canonical model string with corrected provider casing
+
         Raises:
             ValueError: If model string is invalid
         """
+        # Check for whitespace characters in the model string
+        if any(c.isspace() for c in model_string):
+            raise ValueError(
+                f"Invalid model string format: {model_string}. Model string cannot contain whitespace characters")
+
         if ':' not in model_string:
-            raise ValueError(f"Invalid model string format: {model_string}. Expected format: 'provider:model'")
-        
-        provider = model_string.split(':', 1)[0]
-        
+            raise ValueError(
+                f"Invalid model string format: {model_string}. Expected format: 'provider:model'")
+
+        parts = model_string.split(':')
+        if len(parts) != 2:
+            raise ValueError(
+                f"Invalid model string format: {model_string}. Expected exactly one ':' separating provider and model")
+
+        provider, model = parts
+        if not provider:
+            raise ValueError(
+                f"Invalid model string format: {model_string}. Provider cannot be empty")
+
+        if not model:
+            raise ValueError(
+                f"Invalid model string format: {model_string}. Model cannot be empty")
+
         if provider not in self.VALID_PROVIDERS:
-            raise ValueError(f"Unknown provider: {provider}. Valid providers: {', '.join(self.VALID_PROVIDERS)}")
-        
-        return True
-    
+            # Try case-insensitive match
+            provider_lower = provider.lower()
+            if provider_lower not in [p.lower() for p in self.VALID_PROVIDERS]:
+                raise ValueError(
+                    f"Unknown provider: {provider}. Valid providers: {', '.join(self.VALID_PROVIDERS)}")
+            # Use the canonical lowercase version
+            provider = provider_lower
+
+        # Return the canonical model string
+        return f"{provider}:{model}"
+
     async def get_provider_from_service(self, service_name: str) -> str:
         """Get the provider for a service's current model.
-        
+
         Args:
             service_name: Name of the service
-            
+
         Returns:
             Provider name
         """
         config = await self.get_model_config(service_name)
         provider = config.model_string.split(':', 1)[0]
         return provider
-    
+
     async def bulk_update_provider(
         self,
         old_provider: str,
@@ -152,18 +184,18 @@ class ModelConfigService:
         model_mappings: Optional[Dict[str, str]] = None
     ) -> int:
         """Update all services using a specific provider.
-        
+
         Args:
             old_provider: Current provider to replace
             new_provider: New provider to use
             model_mappings: Optional specific model mappings
-            
+
         Returns:
             Number of configurations updated
         """
         if model_mappings is None:
             model_mappings = {}
-        
+
         async with self.uow:
             count = await self.uow.model_configs.bulk_update_provider(
                 old_provider,
