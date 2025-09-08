@@ -52,7 +52,7 @@ export const useAgents = () => {
 
   // Computed states
   const isLoading = availableModels.isLoading || agentConfigs.isLoading || services.loading;
-  const hasModels = (availableModels.data?.length || 0) > 0;
+  const hasModels = Array.isArray(availableModels.data) && availableModels.data.length > 0;
 
   // Operations
   const handleConfigUpdate = (agentId: string, config: ModelConfig) => {
@@ -66,7 +66,7 @@ export const useAgents = () => {
 
   return {
     // Data
-    availableModels: availableModels.data || [],
+    availableModels: Array.isArray(availableModels.data) ? availableModels.data : [],
     agentConfigs: agentConfigs.data || {},
     agents: transformedAgents,
     backendServices: transformedBackendServices,
@@ -101,3 +101,6 @@ export {
   useRemoveProvider,
   useTestProvider,
 };
+
+// Re-export optimistic update utilities
+export * from '../utils/optimisticUpdates';

@@ -5,10 +5,9 @@
  * Shows only active providers with option to add more
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Key,
-  Check,
   X,
   AlertCircle,
   Loader2,
@@ -22,10 +21,6 @@ import {
   Clock,
   Shield,
   Save,
-  RefreshCw,
-  Search,
-  Sparkles,
-  ChevronDown,
   ImageIcon,
   Wrench
 } from 'lucide-react';
@@ -34,6 +29,7 @@ import { cleanProviderService } from '../../../services/cleanProviderService';
 import type { ProviderType, ProviderStatus, ProviderMetadata } from '../../../types/cleanProvider';
 import { Button } from '../../../components/ui/Button';
 import { AddProviderModal } from './AddProviderModal';
+import { useAgents } from '../hooks';
 
 interface ProviderCardProps {
   provider: ProviderStatus;
@@ -41,14 +37,24 @@ interface ProviderCardProps {
   onSave: (provider: ProviderType, apiKey: string, baseUrl?: string) => Promise<void>;
   onTest: (provider: ProviderType) => Promise<void>;
   onRemove: (provider: ProviderType) => Promise<void>;
+  isSaving?: boolean;
+  isTesting?: boolean;
+  isRemoving?: boolean;
 }
 
-const ProviderCard: React.FC<ProviderCardProps> = ({ provider, metadata, onSave, onTest, onRemove }) => {
+const ProviderCard: React.FC<ProviderCardProps> = ({
+  provider,
+  metadata,
+  onSave,
+  onTest,
+  onRemove,
+  isSaving = false,
+  isTesting = false,
+  isRemoving = false
+}) => {
   const [apiKey, setApiKey] = useState('');
   const [baseUrl, setBaseUrl] = useState('');
   const [showKey, setShowKey] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [testing, setTesting] = useState(false);
   const [showInput, setShowInput] = useState(!provider.configured);
 
   const getProviderDisplayName = (provider: ProviderType): string => {
@@ -185,7 +191,6 @@ const ProviderCard: React.FC<ProviderCardProps> = ({ provider, metadata, onSave,
       return;
     }
 
-    setSaving(true);
     try {
       await onSave(provider.provider, apiKey, baseUrl || undefined);
       setShowInput(false);
@@ -193,17 +198,14 @@ const ProviderCard: React.FC<ProviderCardProps> = ({ provider, metadata, onSave,
       setBaseUrl('');
     } catch (error) {
       // Error handled in parent
-    } finally {
-      setSaving(false);
     }
   };
 
   const handleTest = async () => {
-    setTesting(true);
     try {
       await onTest(provider.provider);
-    } finally {
-      setTesting(false);
+    } catch (error) {
+      // Error handled in parent
     }
   };
 
@@ -303,10 +305,14 @@ const ProviderCard: React.FC<ProviderCardProps> = ({ provider, metadata, onSave,
                     </span>
                   )}
                   {metadata.supports_vision && (
-                    <ImageIcon className="w-3 h-3 text-blue-400" title="Supports vision/image input" />
+                    <span title="Supports vision/image input">
+                      <ImageIcon className="w-3 h-3 text-blue-400" />
+                    </span>
                   )}
                   {metadata.supports_tools && (
-                    <Wrench className="w-3 h-3 text-purple-400" title="Supports function calling/tools" />
+                    <span title="Supports function calling/tools">
+                      <Wrench className="w-3 h-3 text-purple-400" />
+                    </span>
                   )}
                 </div>
               )}
@@ -318,11 +324,11 @@ const ProviderCard: React.FC<ProviderCardProps> = ({ provider, metadata, onSave,
               <>
                 <button
                   onClick={handleTest}
-                  disabled={testing}
+                  disabled={isTesting}
                   className="p-1.5 text-gray-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
                   title="Test connection"
                 >
-                  {testing ? (
+                  {isTesting ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <TestTube className="w-4 h-4" />
@@ -330,10 +336,15 @@ const ProviderCard: React.FC<ProviderCardProps> = ({ provider, metadata, onSave,
                 </button>
                 <button
                   onClick={handleRemove}
+                  disabled={isRemoving}
                   className="p-1.5 text-gray-400 hover:text-red-400 rounded-lg hover:bg-red-500/5 transition-colors"
                   title="Remove API key"
                 >
-                  <X className="w-4 h-4" />
+                  {isRemoving ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <X className="w-4 h-4" />
+                  )}
                 </button>
               </>
             )}
@@ -392,10 +403,10 @@ const ProviderCard: React.FC<ProviderCardProps> = ({ provider, metadata, onSave,
 
                 <Button
                   onClick={handleSave}
-                  disabled={(!apiKey && provider.provider !== 'ollama') || saving}
+                  disabled={(!apiKey && provider.provider !== 'ollama') || isSaving}
                   className="bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 text-white text-xs px-3 py-1.5"
                 >
-                  {saving ? (
+                  {isSaving ? (
                     <Loader2 className="w-3 h-3 animate-spin" />
                   ) : (
                     <Save className="w-3 h-3" />
@@ -438,6 +449,16 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = React.memo(({ o
   const [loading, setLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const { showToast } = useToast();
+
+  // Use optimistic update hooks
+  const {
+    addProvider,
+    removeProvider,
+    testProvider,
+    isAddingProvider,
+    isRemovingProvider,
+    isTestingProvider
+  } = useAgents();
 
   // Load provider status on mount
   useEffect(() => {
@@ -482,57 +503,19 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = React.memo(({ o
     }
   };
 
-  const handleAddProvider = (provider: ProviderType) => {
-    // Add provider to active list
-    const newProvider: ProviderStatus = {
-      provider,
-      health: 'not_configured',
-      configured: false,
-      lastChecked: new Date().toISOString()
-    };
-    
-    setActiveProviders([...activeProviders, newProvider]);
-    setAllProviders(allProviders.filter(p => p !== provider));
-  };
-
   const handleSaveApiKey = async (provider: ProviderType, apiKey: string, baseUrl?: string) => {
-    try {
-      await cleanProviderService.setApiKey(provider, apiKey, baseUrl);
-      showToast(`${provider} API key saved successfully`, 'success');
-      await loadProviders();
-    } catch (error) {
-      console.error('Failed to save API key:', error);
-      showToast('Failed to save API key', 'error');
-      throw error;
-    }
+    // Use optimistic add provider mutation
+    await addProvider({ provider, apiKey, baseUrl });
   };
 
   const handleTestConnection = async (provider: ProviderType) => {
-    try {
-      const result = await cleanProviderService.testApiKey(provider);
-      
-      if (result.configured && result.status === 'active') {
-        showToast(`${provider} connection successful`, 'success');
-      } else {
-        showToast(`${provider} connection failed`, 'error');
-      }
-      
-      await loadProviders();
-    } catch (error) {
-      console.error('Failed to test connection:', error);
-      showToast('Connection test failed', 'error');
-    }
+    // Use optimistic test provider mutation
+    await testProvider({ provider });
   };
 
   const handleRemoveApiKey = async (provider: ProviderType) => {
-    try {
-      await cleanProviderService.deactivateApiKey(provider);
-      showToast(`${provider} API key removed`, 'success');
-      await loadProviders();
-    } catch (error) {
-      console.error('Failed to remove API key:', error);
-      showToast('Failed to remove API key', 'error');
-    }
+    // Use optimistic remove provider mutation
+    await removeProvider({ provider });
   };
 
   if (loading) {
@@ -578,6 +561,9 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = React.memo(({ o
               onSave={handleSaveApiKey}
               onTest={handleTestConnection}
               onRemove={handleRemoveApiKey}
+              isSaving={isAddingProvider}
+              isTesting={isTestingProvider}
+              isRemoving={isRemovingProvider}
             />
           ))}
         </div>

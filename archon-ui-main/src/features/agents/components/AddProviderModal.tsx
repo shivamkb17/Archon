@@ -9,7 +9,6 @@ import {
   Search,
   X,
   Key,
-  ExternalLink,
   Zap,
   Info,
   CheckCircle,
@@ -24,8 +23,8 @@ import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
 import { useToast } from '../../../contexts/ToastContext';
-import { cleanProviderService } from '../../../services/cleanProviderService';
 import type { ProviderMetadata } from '../../../types/cleanProvider';
+import { useAgents } from '../hooks';
 
 interface AddProviderModalProps {
   isOpen: boolean;
@@ -47,10 +46,10 @@ export const AddProviderModal: React.FC<AddProviderModalProps> = ({
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [isAdding, setIsAdding] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
   
   const { showToast } = useToast();
+  const { addProvider, isAddingProvider } = useAgents();
 
   // Generate provider display info from metadata or provider name
   const getProviderDisplayInfo = (provider: string, metadata?: ProviderMetadata) => {
@@ -105,13 +104,11 @@ export const AddProviderModal: React.FC<AddProviderModalProps> = ({
     }
 
     try {
-      setIsAdding(true);
-      
-      // Add or update the API key
-      await cleanProviderService.setApiKey(selectedProvider, apiKey.trim());
+      // Use optimistic add provider mutation
+      await addProvider({ provider: selectedProvider, apiKey: apiKey.trim() });
       
       const isUpdate = existingProviders.includes(selectedProvider);
-      const providerName = getProviderDisplayInfo(selectedProvider, selectedProviderMeta).name;
+      const providerName = getProviderDisplayInfo(selectedProvider, selectedProviderMeta || undefined).name;
       showToast(
         `${providerName} ${isUpdate ? 'updated' : 'added'} successfully`, 
         'success'
@@ -126,8 +123,6 @@ export const AddProviderModal: React.FC<AddProviderModalProps> = ({
     } catch (error) {
       console.error('Failed to add/update provider:', error);
       showToast('Failed to add/update provider', 'error');
-    } finally {
-      setIsAdding(false);
     }
   };
 
@@ -289,7 +284,7 @@ export const AddProviderModal: React.FC<AddProviderModalProps> = ({
             <div className="flex items-center justify-between p-4 bg-zinc-800 rounded-lg">
               <div className="flex items-center gap-3">
                 {(() => {
-                  const info = getProviderDisplayInfo(selectedProvider, selectedProviderMeta);
+                  const info = getProviderDisplayInfo(selectedProvider, selectedProviderMeta || undefined);
                   return (
                     <>
                       <span className="text-2xl">{info.icon}</span>
@@ -338,7 +333,7 @@ export const AddProviderModal: React.FC<AddProviderModalProps> = ({
                   type={showApiKey ? 'text' : 'password'}
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
-                  placeholder={getProviderDisplayInfo(selectedProvider, selectedProviderMeta).apiKeyPlaceholder}
+                  placeholder={getProviderDisplayInfo(selectedProvider, selectedProviderMeta || undefined).apiKeyPlaceholder}
                   className="w-full pl-10 pr-10 py-2 text-sm bg-zinc-800 text-white rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-500"
                 />
                 <button
@@ -461,9 +456,9 @@ export const AddProviderModal: React.FC<AddProviderModalProps> = ({
               onClick={handleAddProvider}
               variant="primary"
               size="sm"
-              disabled={!apiKey.trim() || isAdding}
+              disabled={!apiKey.trim() || isAddingProvider}
             >
-              {isAdding ? 'Saving...' : 
+              {isAddingProvider ? 'Saving...' : 
                existingProviders.includes(selectedProvider || '') ? 'Update Provider' : 'Add Provider'}
             </Button>
           )}
