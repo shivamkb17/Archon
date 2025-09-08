@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { KnowledgeItem, KnowledgeItemMetadata } from '../../services/knowledgeBaseService';
-import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { Link as LinkIcon, Upload, Trash2, RefreshCw, X, Globe, BoxIcon, Brain } from 'lucide-react';
 import { format } from 'date-fns';
@@ -182,19 +181,19 @@ const GroupedKnowledgeTableRow: React.FC<GroupedKnowledgeTableRowProps> = ({
   
   // Get the type icon
   const TypeIcon = firstItem.metadata.knowledge_type === 'technical' ? BoxIcon : Brain;
-  const typeIconColor = firstItem.metadata.knowledge_type === 'technical' ? 'text-blue-500' : 'text-purple-500';
+  // const typeIconColor = firstItem.metadata.knowledge_type === 'technical' ? 'text-blue-500' : 'text-purple-500';
 
   // Generate tooltip content for grouped items
-  const tooltipContent = isGrouped ? (
-    <div className="space-y-1">
-      <div className="font-medium text-white">Grouped Sources:</div>
-      {groupedItem.items.map((item, index) => (
-        <div key={item.id} className="text-sm text-gray-200">
-          {index + 1}. {item.source_id}
-        </div>
-      ))}
-    </div>
-  ) : null;
+  // const tooltipContent = isGrouped ? (
+  //   <div className="space-y-1">
+  //     <div className="font-medium text-white">Grouped Sources:</div>
+  //     {groupedItem.items.map((item, index) => (
+  //       <div key={item.id} className="text-sm text-gray-200">
+  //         {index + 1}. {item.source_id}
+  //       </div>
+  //     ))}
+  //   </div>
+  // ) : null;
 
   const handleDelete = async () => {
     if (isGrouped) {

@@ -4,7 +4,7 @@
  * Utilities for providing visual feedback during optimistic updates
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 
 /**
  * Hook for managing optimistic update states with visual feedback
@@ -37,16 +37,21 @@ export const useOptimisticState = <T>(
 /**
  * Hook for managing loading states with optimistic feedback
  */
-export const useOptimisticLoading = (isPending: boolean, error?: Error | null) => {
-  const [loadingState, setLoadingState] = useState<'idle' | 'optimistic' | 'loading' | 'error'>('idle');
+export const useOptimisticLoading = (
+  isPending: boolean,
+  error?: Error | null
+) => {
+  const [loadingState, setLoadingState] = useState<
+    "idle" | "optimistic" | "loading" | "error"
+  >("idle");
 
   useEffect(() => {
     if (error) {
-      setLoadingState('error');
+      setLoadingState("error");
     } else if (isPending) {
-      setLoadingState('optimistic');
+      setLoadingState("optimistic");
     } else {
-      setLoadingState('idle');
+      setLoadingState("idle");
     }
   }, [isPending, error]);
 
@@ -59,18 +64,18 @@ export const useOptimisticLoading = (isPending: boolean, error?: Error | null) =
 export const optimisticUpdateStyles = {
   optimistic: {
     opacity: 0.7,
-    transform: 'scale(0.98)',
-    transition: 'all 0.2s ease-in-out',
+    transform: "scale(0.98)",
+    transition: "all 0.2s ease-in-out",
   },
   success: {
     opacity: 1,
-    transform: 'scale(1)',
-    transition: 'all 0.3s ease-in-out',
+    transform: "scale(1)",
+    transition: "all 0.3s ease-in-out",
   },
   error: {
     opacity: 1,
-    transform: 'scale(1)',
-    animation: 'shake 0.5s ease-in-out',
+    transform: "scale(1)",
+    animation: "shake 0.5s ease-in-out",
   },
 };
 
@@ -79,7 +84,7 @@ export const optimisticUpdateStyles = {
  */
 export const useOptimisticList = <T>(
   items: T[],
-  pendingOperation: 'add' | 'remove' | null,
+  pendingOperation: "add" | "remove" | null,
   pendingItem?: T,
   error?: Error | null
 ) => {
@@ -87,17 +92,19 @@ export const useOptimisticList = <T>(
   const [animatingItems, setAnimatingItems] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    if (pendingOperation === 'add' && pendingItem) {
+    if (pendingOperation === "add" && pendingItem) {
       const itemId = (pendingItem as any).id || JSON.stringify(pendingItem);
-      setOptimisticItems(prev => [...prev, pendingItem]);
-      setAnimatingItems(prev => new Set([...prev, itemId]));
-    } else if (pendingOperation === 'remove' && pendingItem) {
+      setOptimisticItems((prev) => [...prev, pendingItem]);
+      setAnimatingItems((prev) => new Set([...prev, itemId]));
+    } else if (pendingOperation === "remove" && pendingItem) {
       const itemId = (pendingItem as any).id || JSON.stringify(pendingItem);
-      setOptimisticItems(prev => prev.filter(item => {
-        const currentId = (item as any).id || JSON.stringify(item);
-        return currentId !== itemId;
-      }));
-      setAnimatingItems(prev => new Set([...prev, itemId]));
+      setOptimisticItems((prev) =>
+        prev.filter((item) => {
+          const currentId = (item as any).id || JSON.stringify(item);
+          return currentId !== itemId;
+        })
+      );
+      setAnimatingItems((prev) => new Set([...prev, itemId]));
     } else if (!pendingOperation && !error) {
       setOptimisticItems(items);
       setAnimatingItems(new Set());

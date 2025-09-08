@@ -192,9 +192,9 @@ export const GroupedKnowledgeItemCard = ({
   };
   
   // Use active item for icons
-  const TypeIcon = activeItem.metadata.knowledge_type === 'technical' ? BoxIcon : Brain;
-  const sourceIconColor = getSourceIconColor(activeItem);
-  const typeIconColor = getTypeIconColor(activeItem);
+  // const TypeIcon = activeItem.metadata.knowledge_type === 'technical' ? BoxIcon : Brain;
+  // const sourceIconColor = getSourceIconColor(activeItem);
+  // const typeIconColor = getTypeIconColor(activeItem);
   
   const statusColorMap = {
     active: 'green',
@@ -228,17 +228,17 @@ export const GroupedKnowledgeItemCard = ({
   };
 
   // Calculate total word count
-  const totalWordCount = groupedItem.metadata.word_count || groupedItem.items.reduce(
-    (sum, item) => sum + (item.metadata.word_count || 0), 0
-  );
+  // const totalWordCount = groupedItem.metadata.word_count || groupedItem.items.reduce(
+  //   (sum, item) => sum + (item.metadata.word_count || 0), 0
+  // );
 
   // Calculate total code examples count from metadata
-  const totalCodeExamples = useMemo(() => {
-    return groupedItem.items.reduce(
-      (sum, item) => sum + (item.metadata.code_examples_count || 0),
-      0,
-    );
-  }, [groupedItem.items]);
+  // const totalCodeExamples = useMemo(() => {
+  //   return groupedItem.items.reduce(
+  //     (sum, item) => sum + (item.metadata.code_examples_count || 0),
+  //     0,
+  //   );
+  // }, [groupedItem.items]);
 
   // Calculate active item's code examples count from metadata
   const activeCodeExamples = activeItem.metadata.code_examples_count || 0;
@@ -247,21 +247,21 @@ export const GroupedKnowledgeItemCard = ({
   const activeWordCount = activeItem.metadata.word_count || 0;
 
   // Get code examples from all items in the group
-  const allCodeExamples = useMemo(() => {
-    return groupedItem.items.reduce(
-      (examples, item) => {
-        const itemExamples = item.code_examples || [];
-        return [...examples, ...itemExamples.map((ex: any, idx: number) => ({
-          title: ex.metadata?.example_name || ex.metadata?.title || ex.summary?.split('\n')[0] || 'Code Example',
-          description: ex.summary || '',
-        }))];
-      },
-      [] as Array<{
-        title: string;
-        description: string;
-      }>,
-    );
-  }, [groupedItem.items]);
+  // const allCodeExamples = useMemo(() => {
+  //   return groupedItem.items.reduce(
+  //     (examples, item) => {
+  //       const itemExamples = item.code_examples || [];
+  //       return [...examples, ...itemExamples.map((ex: any, idx: number) => ({
+  //         title: ex.metadata?.example_name || ex.metadata?.title || ex.summary?.split('\n')[0] || 'Code Example',
+  //         description: ex.summary || '',
+  //       }))];
+  //     },
+  //     [] as Array<{
+  //       title: string;
+  //       description: string;
+  //     }>,
+  //   );
+  // }, [groupedItem.items]);
 
   // Format code examples for the modal with additional safety checks
   const formattedCodeExamples = useMemo(() => {

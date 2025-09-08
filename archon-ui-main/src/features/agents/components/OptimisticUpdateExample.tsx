@@ -5,14 +5,14 @@
  * for better user experience and visual feedback.
  */
 
-import React, { useState } from 'react';
-import { useAgents, useOptimisticState, useOptimisticLoading } from '../hooks';
+import React, { useState } from "react";
+import { useAgents, useOptimisticState, useOptimisticLoading } from "../hooks";
 import {
   OptimisticButton,
   OptimisticWrapper,
   OptimisticStatus,
-  OptimisticListItem
-} from '../components';
+  OptimisticListItem,
+} from "../components";
 
 /**
  * Example Provider Card with Optimistic Updates
@@ -23,7 +23,13 @@ export const ExampleProviderCard: React.FC<{
   onRemove: () => Promise<void>;
   isRemoving?: boolean;
   removeError?: Error | null;
-}> = ({ provider, isConfigured, onRemove, isRemoving = false, removeError = null }) => {
+}> = ({
+  provider,
+  isConfigured,
+  onRemove,
+  isRemoving = false,
+  removeError = null,
+}) => {
   // Use optimistic state for configuration status
   const { value: optimisticConfigured, isOptimistic } = useOptimisticState(
     isConfigured,
@@ -46,10 +52,13 @@ export const ExampleProviderCard: React.FC<{
           <span>{provider}</span>
           <OptimisticStatus
             status={
-              loadingState === 'loading' ? 'optimistic' :
-              loadingState === 'error' ? 'error' :
-              loadingState === 'optimistic' ? 'optimistic' :
-              'idle'
+              loadingState === "loading"
+                ? "optimistic"
+                : loadingState === "error"
+                ? "error"
+                : loadingState === "optimistic"
+                ? "optimistic"
+                : "idle"
             }
           />
         </div>
@@ -69,9 +78,7 @@ export const ExampleProviderCard: React.FC<{
       </div>
 
       {optimisticConfigured && (
-        <div className="mt-2 text-sm text-green-600">
-          ✓ Configured
-        </div>
+        <div className="mt-2 text-sm text-green-600">✓ Configured</div>
       )}
     </OptimisticWrapper>
   );
@@ -87,12 +94,12 @@ export const ExampleProviderList: React.FC<{
   isAdding?: boolean;
   addError?: Error | null;
 }> = ({ providers, onAdd, onRemove, isAdding = false, addError = null }) => {
-  const [newProvider, setNewProvider] = useState('');
+  const [newProvider, setNewProvider] = useState("");
 
   const handleAdd = async () => {
     if (!newProvider.trim()) return;
     await onAdd(newProvider);
-    setNewProvider('');
+    setNewProvider("");
   };
 
   return (
@@ -139,27 +146,25 @@ export const ExampleProviderList: React.FC<{
  * Usage Example in a Parent Component
  */
 export const ExampleUsage: React.FC = () => {
-  const {
-    availableModels,
-    addProvider,
-    removeProvider
-  } = useAgents();
+  const { availableModels, addProvider, removeProvider } = useAgents();
 
-  const [providers, setProviders] = useState<string[]>(['openai', 'anthropic']);
+  const [providers, setProviders] = useState<string[]>(["openai", "anthropic"]);
 
   const handleAddProvider = async (provider: string) => {
-    await addProvider({ provider, apiKey: 'test-key' });
-    setProviders(prev => [...prev, provider]);
+    await addProvider({ provider, apiKey: "test-key" });
+    setProviders((prev) => [...prev, provider]);
   };
 
   const handleRemoveProvider = async (provider: string) => {
     await removeProvider({ provider });
-    setProviders(prev => prev.filter(p => p !== provider));
+    setProviders((prev) => prev.filter((p) => p !== provider));
   };
 
   return (
     <div className="p-6">
-      <h2 className="text-xl font-bold mb-4">Providers with Optimistic Updates</h2>
+      <h2 className="text-xl font-bold mb-4">
+        Providers with Optimistic Updates
+      </h2>
 
       <ExampleProviderList
         providers={providers}

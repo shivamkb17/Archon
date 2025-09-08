@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState, useMemo, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Cpu,
   AlertCircle,
@@ -14,13 +14,13 @@ import {
   Activity,
   Zap,
   Clock,
-  XCircle
-} from 'lucide-react';
-import { cleanProviderService } from '../services/cleanProviderService';
-import { useServiceRegistry } from '../contexts/ServiceRegistryContext';
-import { useAgents } from '../features/agents/hooks';
-import { Button } from './ui/Button';
-import { Badge } from './ui/Badge';
+  XCircle,
+} from "lucide-react";
+import { cleanProviderService } from "../services/cleanProviderService";
+import { useServiceRegistry } from "../contexts/ServiceRegistryContext";
+import { useAgents } from "../features/agents/hooks";
+import { Button } from "./ui/Button";
+import { Badge } from "./ui/Badge";
 
 interface ActiveModel {
   model_string: string;
@@ -42,15 +42,15 @@ interface ModelStatus {
 }
 
 const PROVIDER_COLORS: Record<string, string> = {
-  'openai': 'bg-green-500',
-  'anthropic': 'bg-orange-500',
-  'google': 'bg-blue-500',
-  'mistral': 'bg-purple-500',
-  'groq': 'bg-pink-500',
-  'deepseek': 'bg-indigo-500',
-  'ollama': 'bg-gray-500',
-  'openrouter': 'bg-teal-500',
-  'unknown': 'bg-gray-400'
+  openai: "bg-green-500",
+  anthropic: "bg-orange-500",
+  google: "bg-blue-500",
+  mistral: "bg-purple-500",
+  groq: "bg-pink-500",
+  deepseek: "bg-indigo-500",
+  ollama: "bg-gray-500",
+  openrouter: "bg-teal-500",
+  unknown: "bg-gray-400",
 };
 
 // Helper function to format large numbers
@@ -66,7 +66,7 @@ const formatTokens = (num: number): string => {
 // Helper function to format currency
 const formatCurrency = (amount: number): string => {
   if (amount < 0.01) {
-    return '$0.00';
+    return "$0.00";
   } else if (amount < 1) {
     return `$${amount.toFixed(3)}`;
   } else if (amount >= 1000) {
@@ -79,12 +79,15 @@ export const ModelStatusBar: React.FC = () => {
   const navigate = useNavigate();
 
   // Debug navigation to prevent full page reloads
-  const handleNavigate = useCallback((path: string) => {
-    // Ensure we're using client-side routing
-    if (window.location.pathname !== path) {
-      navigate(path, { replace: false });
-    }
-  }, [navigate]);
+  const handleNavigate = useCallback(
+    (path: string) => {
+      // Ensure we're using client-side routing
+      if (window.location.pathname !== path) {
+        navigate(path, { replace: false });
+      }
+    },
+    [navigate]
+  );
   const [modelStatus, setModelStatus] = useState<ModelStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -98,21 +101,24 @@ export const ModelStatusBar: React.FC = () => {
   // Track window width for responsive behavior
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   // Memoize responsive values to prevent unnecessary re-renders
-  const responsiveValues = useMemo(() => ({
-    isMobile: windowWidth < 640,
-    isTablet: windowWidth >= 640 && windowWidth < 768,
-    isDesktop: windowWidth >= 768,
-    maxServices: windowWidth < 640 ? 2 : 3,
-    maxModels: windowWidth < 640 ? 1 : 2,
-    showUsageStats: windowWidth >= 768,
-    serviceNameLength: windowWidth < 640 ? 3 : undefined,
-    modelNameLength: windowWidth < 640 ? 8 : 15
-  }), [windowWidth]);
+  const responsiveValues = useMemo(
+    () => ({
+      isMobile: windowWidth < 640,
+      isTablet: windowWidth >= 640 && windowWidth < 768,
+      isDesktop: windowWidth >= 768,
+      maxServices: windowWidth < 640 ? 2 : 3,
+      maxModels: windowWidth < 640 ? 1 : 2,
+      showUsageStats: windowWidth >= 768,
+      serviceNameLength: windowWidth < 640 ? 3 : undefined,
+      modelNameLength: windowWidth < 640 ? 8 : 15,
+    }),
+    [windowWidth]
+  );
 
   // Memoize agent configs to avoid calling getAgentConfigs() during render
   const agentConfigs = useMemo(() => getAgentConfigs(), [getAgentConfigs]);
@@ -129,32 +135,49 @@ export const ModelStatusBar: React.FC = () => {
     const isChecking = Math.random() > 0.95; // 5% checking
 
     if (isChecking) {
-      return <Clock className="w-3 h-3 text-yellow-400 animate-spin" aria-label="Checking status" />;
+      return (
+        <Clock
+          className="w-3 h-3 text-yellow-400 animate-spin"
+          aria-label="Checking status"
+        />
+      );
     }
     if (isHealthy) {
-      return <CheckCircle className="w-3 h-3 text-emerald-400" aria-label="Service healthy" />;
+      return (
+        <CheckCircle
+          className="w-3 h-3 text-emerald-400"
+          aria-label="Service healthy"
+        />
+      );
     }
-    return <XCircle className="w-3 h-3 text-red-400" aria-label="Service unhealthy" />;
+    return (
+      <XCircle
+        className="w-3 h-3 text-red-400"
+        aria-label="Service unhealthy"
+      />
+    );
   };
 
   // Get cost indicator
   const getCostIndicator = (costProfile: string) => {
     const colors = {
-      high: 'text-red-400',
-      medium: 'text-yellow-400',
-      low: 'text-emerald-400'
+      high: "text-red-400",
+      medium: "text-yellow-400",
+      low: "text-emerald-400",
     };
     const labels = {
-      high: '$$$',
-      medium: '$$',
-      low: '$'
+      high: "$$$",
+      medium: "$$",
+      low: "$",
     };
     return (
       <span
-        className={`text-xs font-mono ${colors[costProfile as keyof typeof colors] || 'text-gray-400'}`}
+        className={`text-xs font-mono ${
+          colors[costProfile as keyof typeof colors] || "text-gray-400"
+        }`}
         aria-label={`Cost profile: ${costProfile}`}
       >
-        {labels[costProfile as keyof typeof labels] || '$'}
+        {labels[costProfile as keyof typeof labels] || "$"}
       </span>
     );
   };
@@ -165,8 +188,8 @@ export const ModelStatusBar: React.FC = () => {
       const status = await cleanProviderService.getActiveModels();
       setModelStatus(status);
     } catch (err) {
-      console.error('Failed to fetch model status:', err);
-      setError('Failed to fetch model status');
+      console.error("Failed to fetch model status:", err);
+      setError("Failed to fetch model status");
     } finally {
       setLoading(false);
       setIsRefreshing(false);
@@ -194,11 +217,11 @@ export const ModelStatusBar: React.FC = () => {
     };
 
     // Add event listeners for agent updates (can be enhanced with actual event system)
-    window.addEventListener('agentConfigUpdated', handleAgentUpdate);
+    window.addEventListener("agentConfigUpdated", handleAgentUpdate);
 
     return () => {
       clearInterval(interval);
-      window.removeEventListener('agentConfigUpdated', handleAgentUpdate);
+      window.removeEventListener("agentConfigUpdated", handleAgentUpdate);
       if (refreshTimeout) {
         clearTimeout(refreshTimeout);
       }
@@ -212,8 +235,8 @@ export const ModelStatusBar: React.FC = () => {
     try {
       await fetchModelStatus();
       // Show success feedback
-      const event = new CustomEvent('statusBarRefreshed', {
-        detail: { timestamp: new Date().toISOString() }
+      const event = new CustomEvent("statusBarRefreshed", {
+        detail: { timestamp: new Date().toISOString() },
       });
       window.dispatchEvent(event);
     } catch (error) {
@@ -228,7 +251,7 @@ export const ModelStatusBar: React.FC = () => {
         <div className="flex items-center gap-2 text-gray-400">
           <Cpu className="w-3 h-3 animate-pulse" />
           <span className="text-xs">
-            Loading {loading ? 'model status' : 'service registry'}...
+            Loading {loading ? "model status" : "service registry"}...
           </span>
         </div>
       </div>
@@ -251,7 +274,10 @@ export const ModelStatusBar: React.FC = () => {
   }
 
   return (
-    <div className="bg-gray-900/95 backdrop-blur-sm border-b border-gray-700 shadow-lg" id="model-status-bar">
+    <div
+      className="bg-gray-900/95 backdrop-blur-sm border-b border-gray-700 shadow-lg"
+      id="model-status-bar"
+    >
       {/* Mobile-first responsive design */}
       <div className="px-2 py-1.5 sm:px-4">
         <div className="flex items-center justify-between">
@@ -260,35 +286,53 @@ export const ModelStatusBar: React.FC = () => {
             {/* Services Status - Compact on mobile */}
             <div className="flex items-center gap-1 sm:gap-2">
               <Activity className="w-3 h-3 text-blue-400 flex-shrink-0" />
-              <span className="text-xs font-medium text-gray-300 hidden sm:inline">Services:</span>
+              <span className="text-xs font-medium text-gray-300 hidden sm:inline">
+                Services:
+              </span>
               <div className="flex items-center gap-1 overflow-hidden">
-                {allServices.slice(0, isExpanded ? allServices.length : responsiveValues.maxServices).map((service) => (
-                  <div
-                    key={service.id}
-                    className="flex items-center gap-1 bg-gray-800/50 rounded px-1 sm:px-1.5 py-0.5 hover:bg-gray-700/50 transition-colors cursor-pointer flex-shrink-0"
-                    onClick={() => handleNavigate('/agents')}
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`${service.name} - ${service.defaultModel || 'No model configured'}`}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        handleNavigate('/agents');
-                      }
-                    }}
-                  >
-                    {getServiceStatusIcon()}
-                    <span className="text-[10px] text-gray-300 truncate max-w-12 sm:max-w-16">
-                      {responsiveValues.serviceNameLength ? service.name.substring(0, responsiveValues.serviceNameLength) : service.name}
+                {allServices
+                  .slice(
+                    0,
+                    isExpanded
+                      ? allServices.length
+                      : responsiveValues.maxServices
+                  )
+                  .map((service) => (
+                    <div
+                      key={service.id}
+                      className="flex items-center gap-1 bg-gray-800/50 rounded px-1 sm:px-1.5 py-0.5 hover:bg-gray-700/50 transition-colors cursor-pointer flex-shrink-0"
+                      onClick={() => handleNavigate("/agents")}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`${service.name} - ${
+                        service.defaultModel || "No model configured"
+                      }`}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleNavigate("/agents");
+                        }
+                      }}
+                    >
+                      {getServiceStatusIcon()}
+                      <span className="text-[10px] text-gray-300 truncate max-w-12 sm:max-w-16">
+                        {responsiveValues.serviceNameLength
+                          ? service.name.substring(
+                              0,
+                              responsiveValues.serviceNameLength
+                            )
+                          : service.name}
+                      </span>
+                      {window.innerWidth >= 640 &&
+                        getCostIndicator(service.costProfile)}
+                    </div>
+                  ))}
+                {allServices.length > responsiveValues.maxServices &&
+                  !isExpanded && (
+                    <span className="text-xs text-gray-500 px-1 flex-shrink-0">
+                      +{allServices.length - responsiveValues.maxServices}
                     </span>
-                    {window.innerWidth >= 640 && getCostIndicator(service.costProfile)}
-                  </div>
-                ))}
-                {allServices.length > responsiveValues.maxServices && !isExpanded && (
-                  <span className="text-xs text-gray-500 px-1 flex-shrink-0">
-                    +{allServices.length - responsiveValues.maxServices}
-                  </span>
-                )}
+                  )}
               </div>
             </div>
 
@@ -321,61 +365,77 @@ export const ModelStatusBar: React.FC = () => {
             {/* Models - Compact display */}
             <div className="flex items-center gap-1 sm:gap-2">
               <Cpu className="w-3 h-3 text-blue-400 flex-shrink-0" />
-              <span className="text-xs font-medium text-gray-300 hidden sm:inline">Models:</span>
+              <span className="text-xs font-medium text-gray-300 hidden sm:inline">
+                Models:
+              </span>
               <div className="flex items-center gap-1 overflow-hidden">
-                {modelStatus.active_models && Object.entries(modelStatus.active_models)
-                  .filter(([service]) => {
-                    return agentConfigs[service] !== undefined;
-                  })
-                  .slice(0, responsiveValues.maxModels)
-                  .map(([service, model]) => {
-                    return (
-                  <div
-                    key={service}
-                    className="flex items-center gap-1 bg-gray-800/50 rounded px-1 sm:px-1.5 py-0.5 hover:bg-gray-700/50 transition-colors cursor-pointer flex-shrink-0"
-                    onClick={() => handleNavigate('/agents')}
-                    role="button"
-                    tabIndex={0}
-                    title={`${agentConfigs[service]?.name || service}: ${model.model_string}`}
-                    aria-label={`${agentConfigs[service]?.name || service} using ${model.model_string}`}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        handleNavigate('/agents');
-                      }
-                    }}
-                  >
-                    <span className="text-[10px] text-gray-400 hidden sm:inline">
-                      {agentConfigs[service]?.name || service}:
+                {modelStatus.active_models &&
+                  Object.entries(modelStatus.active_models)
+                    .filter(([service]) => {
+                      return agentConfigs[service] !== undefined;
+                    })
+                    .slice(0, responsiveValues.maxModels)
+                    .map(([service, model]) => {
+                      return (
+                        <div
+                          key={service}
+                          className="flex items-center gap-1 bg-gray-800/50 rounded px-1 sm:px-1.5 py-0.5 hover:bg-gray-700/50 transition-colors cursor-pointer flex-shrink-0"
+                          onClick={() => handleNavigate("/agents")}
+                          role="button"
+                          tabIndex={0}
+                          title={`${agentConfigs[service]?.name || service}: ${
+                            model.model_string
+                          }`}
+                          aria-label={`${
+                            agentConfigs[service]?.name || service
+                          } using ${model.model_string}`}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              handleNavigate("/agents");
+                            }
+                          }}
+                        >
+                          <span className="text-[10px] text-gray-400 hidden sm:inline">
+                            {agentConfigs[service]?.name || service}:
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <div
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                PROVIDER_COLORS[model.provider] ||
+                                PROVIDER_COLORS.unknown
+                              }`}
+                              title={model.provider}
+                              aria-label={`Provider: ${model.provider}`}
+                            />
+                            <span className="text-[10px] font-mono text-gray-300 truncate max-w-12 sm:max-w-20">
+                              {model.model.length >
+                              responsiveValues.modelNameLength
+                                ? `${model.model.substring(
+                                    0,
+                                    responsiveValues.modelNameLength
+                                  )}...`
+                                : model.model}
+                            </span>
+                            {!model.api_key_configured && (
+                              <AlertCircle
+                                className="w-2.5 h-2.5 text-yellow-500 flex-shrink-0"
+                                aria-label="API key not configured"
+                              />
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                {modelStatus.active_models &&
+                  Object.keys(modelStatus.active_models).length >
+                    responsiveValues.maxModels && (
+                    <span className="text-xs text-gray-500 px-1 flex-shrink-0">
+                      +
+                      {Object.keys(modelStatus.active_models).length -
+                        responsiveValues.maxModels}
                     </span>
-                    <div className="flex items-center gap-1">
-                      <div
-                        className={`w-1.5 h-1.5 rounded-full ${
-                          PROVIDER_COLORS[model.provider] || PROVIDER_COLORS.unknown
-                        }`}
-                        title={model.provider}
-                        aria-label={`Provider: ${model.provider}`}
-                      />
-                      <span className="text-[10px] font-mono text-gray-300 truncate max-w-12 sm:max-w-20">
-                        {model.model.length > responsiveValues.modelNameLength
-                          ? `${model.model.substring(0, responsiveValues.modelNameLength)}...`
-                          : model.model}
-                      </span>
-                      {!model.api_key_configured && (
-                        <AlertCircle
-                          className="w-2.5 h-2.5 text-yellow-500 flex-shrink-0"
-                          aria-label="API key not configured"
-                        />
-                      )}
-                    </div>
-                  </div>
-                    );
-                  })}
-                {modelStatus.active_models && Object.keys(modelStatus.active_models).length > responsiveValues.maxModels && (
-                  <span className="text-xs text-gray-500 px-1 flex-shrink-0">
-                    +{Object.keys(modelStatus.active_models).length - responsiveValues.maxModels}
-                  </span>
-                )}
+                  )}
               </div>
             </div>
           </div>
@@ -385,7 +445,7 @@ export const ModelStatusBar: React.FC = () => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => handleNavigate('/agents')}
+              onClick={() => handleNavigate("/agents")}
               className="p-1 sm:p-1.5 rounded hover:bg-gray-800 transition-colors text-gray-400 hover:text-white"
               aria-label="Configure agents and services"
             >
@@ -397,7 +457,9 @@ export const ModelStatusBar: React.FC = () => {
               size="sm"
               onClick={() => setIsExpanded(!isExpanded)}
               className="p-1 sm:p-1.5 rounded hover:bg-gray-800 transition-colors text-gray-400 hover:text-white"
-              aria-label={isExpanded ? "Collapse status bar" : "Expand status bar"}
+              aria-label={
+                isExpanded ? "Collapse status bar" : "Expand status bar"
+              }
               aria-expanded={isExpanded}
             >
               {isExpanded ? (
@@ -412,10 +474,16 @@ export const ModelStatusBar: React.FC = () => {
               disabled={isRefreshing}
               className="p-1 sm:p-1.5 rounded hover:bg-gray-800 transition-colors disabled:opacity-50"
               title="Refresh model status"
-              aria-label={isRefreshing ? "Refreshing model status" : "Refresh model status"}
+              aria-label={
+                isRefreshing
+                  ? "Refreshing model status"
+                  : "Refresh model status"
+              }
             >
               <RefreshCw
-                className={`w-3 h-3 sm:w-4 sm:h-4 text-gray-400 ${isRefreshing ? 'animate-spin' : ''}`}
+                className={`w-3 h-3 sm:w-4 sm:h-4 text-gray-400 ${
+                  isRefreshing ? "animate-spin" : ""
+                }`}
               />
             </button>
           </div>
@@ -429,7 +497,7 @@ export const ModelStatusBar: React.FC = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => handleNavigate('/agents')}
+                onClick={() => handleNavigate("/agents")}
                 className="bg-gray-800/50 border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white text-xs sm:text-sm"
               >
                 <Settings className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
@@ -439,7 +507,7 @@ export const ModelStatusBar: React.FC = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => handleNavigate('/settings')}
+                onClick={() => handleNavigate("/settings")}
                 className="bg-gray-800/50 border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white text-xs sm:text-sm"
               >
                 <Activity className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
@@ -453,8 +521,12 @@ export const ModelStatusBar: React.FC = () => {
                 disabled={isRefreshing}
                 className="bg-gray-800/50 border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white text-xs sm:text-sm disabled:opacity-50"
               >
-                <RefreshCw className={`w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-                {isRefreshing ? 'Refreshing...' : 'Refresh Status'}
+                <RefreshCw
+                  className={`w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 ${
+                    isRefreshing ? "animate-spin" : ""
+                  }`}
+                />
+                {isRefreshing ? "Refreshing..." : "Refresh Status"}
               </Button>
             </div>
 
@@ -464,21 +536,28 @@ export const ModelStatusBar: React.FC = () => {
                 <div
                   key={service.id}
                   className="bg-gray-800/50 rounded-lg p-3 border border-gray-700/50 hover:bg-gray-700/50 transition-colors cursor-pointer"
-                  onClick={() => handleNavigate('/agents')}
+                  onClick={() => handleNavigate("/agents")}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
+                    if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      handleNavigate('/agents');
+                      handleNavigate("/agents");
                     }
                   }}
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
                       {getServiceStatusIcon()}
-                      <h4 className="text-sm font-medium text-white truncate">{service.name}</h4>
-                      <Badge variant={service.category === 'agent' ? 'primary' : 'secondary'} className="text-xs flex-shrink-0">
+                      <h4 className="text-sm font-medium text-white truncate">
+                        {service.name}
+                      </h4>
+                      <Badge
+                        variant={
+                          service.category === "agent" ? "primary" : "secondary"
+                        }
+                        className="text-xs flex-shrink-0"
+                      >
                         {service.category}
                       </Badge>
                     </div>
@@ -495,14 +574,21 @@ export const ModelStatusBar: React.FC = () => {
                       <span className="text-xs text-gray-300 truncate">
                         {(() => {
                           // Show active model if available, otherwise show default model
-                          const activeModel = modelStatus?.active_models?.[service.id];
+                          const activeModel =
+                            modelStatus?.active_models?.[service.id];
                           if (activeModel) {
-                            return activeModel.model_string.split(':')[1] || activeModel.model_string;
+                            return (
+                              activeModel.model_string.split(":")[1] ||
+                              activeModel.model_string
+                            );
                           }
                           return service.defaultModel ? (
-                            service.defaultModel.split(':')[1] || service.defaultModel
+                            service.defaultModel.split(":")[1] ||
+                              service.defaultModel
                           ) : (
-                            <span className="text-yellow-400">Not configured</span>
+                            <span className="text-yellow-400">
+                              Not configured
+                            </span>
                           );
                         })()}
                       </span>

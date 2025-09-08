@@ -5,7 +5,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "../../../contexts/ToastContext";
 import { agentApi } from "../services/agentService";
-import type { AgentConfigUpdate, ProviderOperation, ModelConfig } from "../types";
+import type {
+  AgentConfigUpdate,
+  ProviderOperation,
+  ModelConfig,
+} from "../types";
 import { agentKeys, modelKeys, providerKeys } from "../utils/queryKeys";
 
 /**
@@ -22,7 +26,8 @@ export const useUpdateAgentConfig = () => {
     retry: (failureCount, error) => {
       // Retry up to 2 times for network errors, but not for validation errors
       if (failureCount >= 2) return false;
-      if (error instanceof Error && error.message.includes("validation")) return false;
+      if (error instanceof Error && error.message.includes("validation"))
+        return false;
       return true;
     },
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
@@ -34,10 +39,13 @@ export const useUpdateAgentConfig = () => {
       const previousConfigs = queryClient.getQueryData(agentKeys.configs());
 
       // Optimistically update the cache
-      queryClient.setQueryData(agentKeys.configs(), (old: Record<string, ModelConfig> | undefined) => ({
-        ...old,
-        [serviceId]: config,
-      }));
+      queryClient.setQueryData(
+        agentKeys.configs(),
+        (old: Record<string, ModelConfig> | undefined) => ({
+          ...old,
+          [serviceId]: config,
+        })
+      );
 
       return { previousConfigs };
     },
@@ -48,19 +56,26 @@ export const useUpdateAgentConfig = () => {
       }
 
       // Enhanced error handling with more specific messages
-      const errorMessage = err instanceof Error ? err.message : "Unknown error occurred";
-      showToast(`Failed to update ${variables.serviceId} configuration: ${errorMessage}`, "error");
+      const errorMessage =
+        err instanceof Error ? err.message : "Unknown error occurred";
+      showToast(
+        `Failed to update ${variables.serviceId} configuration: ${errorMessage}`,
+        "error"
+      );
     },
     onSuccess: (_data, variables) => {
-      showToast(`${variables.serviceId} configuration updated successfully`, "success");
+      showToast(
+        `${variables.serviceId} configuration updated successfully`,
+        "success"
+      );
 
       // Dispatch event to notify ModelStatusBar of configuration changes
-      const event = new CustomEvent('agentConfigUpdated', {
+      const event = new CustomEvent("agentConfigUpdated", {
         detail: {
           serviceId: variables.serviceId,
           config: variables.config,
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       });
       window.dispatchEvent(event);
 
@@ -90,7 +105,8 @@ export const useAddProvider = () => {
     },
     retry: (failureCount, error) => {
       // Don't retry validation errors
-      if (error instanceof Error && error.message.includes("API key")) return false;
+      if (error instanceof Error && error.message.includes("API key"))
+        return false;
       return failureCount < 1; // Retry once for network errors
     },
     retryDelay: 1000,
@@ -101,47 +117,59 @@ export const useAddProvider = () => {
       await queryClient.cancelQueries({ queryKey: providerKeys.metadata() });
 
       // Snapshot the previous values
-      const previousProviders = queryClient.getQueryData(providerKeys.apiKeys());
+      const previousProviders = queryClient.getQueryData(
+        providerKeys.apiKeys()
+      );
       const previousModels = queryClient.getQueryData(modelKeys.available());
-      const previousMetadata = queryClient.getQueryData(providerKeys.metadata());
+      const previousMetadata = queryClient.getQueryData(
+        providerKeys.metadata()
+      );
 
       // Optimistically add provider to active providers list
-      queryClient.setQueryData(providerKeys.apiKeys(), (old: string[] | undefined) => {
-        if (!old) return [provider];
-        return old.includes(provider) ? old : [...old, provider];
-      });
+      queryClient.setQueryData(
+        providerKeys.apiKeys(),
+        (old: string[] | undefined) => {
+          if (!old) return [provider];
+          return old.includes(provider) ? old : [...old, provider];
+        }
+      );
 
       // Optimistically update available models by adding placeholder models for the new provider
       // This will be replaced with actual models when the server responds
-      queryClient.setQueryData(modelKeys.available(), (old: any[] | undefined) => {
-        if (!old) return [];
-        
-        // Add some common model placeholders for the provider
-        const placeholderModels = [
-          {
-            provider,
-            model: `${provider}-model-1`,
-            model_string: `${provider}/model-1`,
-            display_name: `${provider} Model 1`,
-            has_api_key: true,
-            cost_tier: 'medium' as const,
-            is_embedding: false,
-          },
-          {
-            provider,
-            model: `${provider}-model-2`, 
-            model_string: `${provider}/model-2`,
-            display_name: `${provider} Model 2`,
-            has_api_key: true,
-            cost_tier: 'medium' as const,
-            is_embedding: false,
-          }
-        ];
-        
-        // Remove any existing models for this provider and add the new ones
-        const filteredModels = old.filter((model: any) => model.provider !== provider);
-        return [...filteredModels, ...placeholderModels];
-      });
+      queryClient.setQueryData(
+        modelKeys.available(),
+        (old: any[] | undefined) => {
+          if (!old) return [];
+
+          // Add some common model placeholders for the provider
+          const placeholderModels = [
+            {
+              provider,
+              model: `${provider}-model-1`,
+              model_string: `${provider}/model-1`,
+              display_name: `${provider} Model 1`,
+              has_api_key: true,
+              cost_tier: "medium" as const,
+              is_embedding: false,
+            },
+            {
+              provider,
+              model: `${provider}-model-2`,
+              model_string: `${provider}/model-2`,
+              display_name: `${provider} Model 2`,
+              has_api_key: true,
+              cost_tier: "medium" as const,
+              is_embedding: false,
+            },
+          ];
+
+          // Remove any existing models for this provider and add the new ones
+          const filteredModels = old.filter(
+            (model: any) => model.provider !== provider
+          );
+          return [...filteredModels, ...placeholderModels];
+        }
+      );
 
       // Show immediate success feedback
       showToast(`${provider} added successfully`, "success");
@@ -151,10 +179,16 @@ export const useAddProvider = () => {
     onError: (_err, variables, context) => {
       // Rollback all optimistic updates
       if (context?.previousProviders) {
-        queryClient.setQueryData(providerKeys.apiKeys(), context.previousProviders);
+        queryClient.setQueryData(
+          providerKeys.apiKeys(),
+          context.previousProviders
+        );
       }
       if (context?.previousMetadata) {
-        queryClient.setQueryData(providerKeys.metadata(), context.previousMetadata);
+        queryClient.setQueryData(
+          providerKeys.metadata(),
+          context.previousMetadata
+        );
       }
       if (context?.previousModels) {
         queryClient.setQueryData(modelKeys.available(), context.previousModels);
@@ -170,11 +204,11 @@ export const useAddProvider = () => {
       queryClient.invalidateQueries({ queryKey: providerKeys.metadata() });
 
       // Dispatch event to notify ModelStatusBar of provider changes
-      const event = new CustomEvent('agentConfigUpdated', {
+      const event = new CustomEvent("agentConfigUpdated", {
         detail: {
-          type: 'provider_added',
-          timestamp: new Date().toISOString()
-        }
+          type: "provider_added",
+          timestamp: new Date().toISOString(),
+        },
       });
       window.dispatchEvent(event);
     },
@@ -201,34 +235,45 @@ export const useRemoveProvider = () => {
       await queryClient.cancelQueries({ queryKey: providerKeys.apiKeys() });
 
       // Snapshot the previous value
-      const previousProviders = queryClient.getQueryData(providerKeys.apiKeys());
+      const previousProviders = queryClient.getQueryData(
+        providerKeys.apiKeys()
+      );
 
       // Optimistically remove models for this provider
-      queryClient.setQueryData(modelKeys.available(), (old: any[] | undefined) => {
-        if (!old) return [];
-        return old.filter((model: any) => model.provider !== provider);
-      });
+      queryClient.setQueryData(
+        modelKeys.available(),
+        (old: any[] | undefined) => {
+          if (!old) return [];
+          return old.filter((model: any) => model.provider !== provider);
+        }
+      );
 
       // Optimistically update provider metadata to show as not configured
-      queryClient.setQueryData(providerKeys.metadata(), (old: Record<string, any> | undefined) => {
-        if (!old) return {};
-        const updated = { ...old };
-        if (updated[provider]) {
-          updated[provider] = {
-            ...updated[provider],
-            configured: false,
-            status: "not_configured",
-          };
+      queryClient.setQueryData(
+        providerKeys.metadata(),
+        (old: Record<string, any> | undefined) => {
+          if (!old) return {};
+          const updated = { ...old };
+          if (updated[provider]) {
+            updated[provider] = {
+              ...updated[provider],
+              configured: false,
+              status: "not_configured",
+            };
+          }
+          return updated;
         }
-        return updated;
-      });
+      );
 
       return { previousProviders };
     },
     onError: (_err, variables, context) => {
       // Rollback on error
       if (context?.previousProviders) {
-        queryClient.setQueryData(providerKeys.apiKeys(), context.previousProviders);
+        queryClient.setQueryData(
+          providerKeys.apiKeys(),
+          context.previousProviders
+        );
       }
       showToast(`Failed to remove ${variables.provider}`, "error");
     },
@@ -240,12 +285,12 @@ export const useRemoveProvider = () => {
       queryClient.invalidateQueries({ queryKey: providerKeys.metadata() });
 
       // Dispatch event to notify ModelStatusBar of provider changes
-      const event = new CustomEvent('agentConfigUpdated', {
+      const event = new CustomEvent("agentConfigUpdated", {
         detail: {
-          type: 'provider_removed',
+          type: "provider_removed",
           provider: variables.provider,
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       });
       window.dispatchEvent(event);
     },
@@ -268,20 +313,26 @@ export const useTestProvider = () => {
       await queryClient.cancelQueries({ queryKey: providerKeys.metadata() });
 
       // Snapshot the previous metadata
-      const previousMetadata = queryClient.getQueryData(providerKeys.metadata());
+      const previousMetadata = queryClient.getQueryData(
+        providerKeys.metadata()
+      );
 
       // Optimistically update provider metadata to show testing status
-      queryClient.setQueryData(providerKeys.metadata(), (old: Record<string, any> | undefined) => {
-        if (!old) return { [provider]: { configured: true, status: "testing" } };
-        return {
-          ...old,
-          [provider]: {
-            ...old[provider],
-            status: "testing",
-            lastTested: new Date().toISOString(),
-          },
-        };
-      });
+      queryClient.setQueryData(
+        providerKeys.metadata(),
+        (old: Record<string, any> | undefined) => {
+          if (!old)
+            return { [provider]: { configured: true, status: "testing" } };
+          return {
+            ...old,
+            [provider]: {
+              ...old[provider],
+              status: "testing",
+              lastTested: new Date().toISOString(),
+            },
+          };
+        }
+      );
 
       // Show immediate feedback
       showToast(`Testing ${provider} connection...`, "info");
@@ -291,25 +342,37 @@ export const useTestProvider = () => {
     onError: (_err, variables, context) => {
       // Rollback to previous metadata
       if (context?.previousMetadata) {
-        queryClient.setQueryData(providerKeys.metadata(), context.previousMetadata);
+        queryClient.setQueryData(
+          providerKeys.metadata(),
+          context.previousMetadata
+        );
       }
 
       showToast(`Failed to test ${variables.provider}`, "error");
     },
     onSuccess: (data, variables) => {
       // Update metadata with actual test results
-      queryClient.setQueryData(providerKeys.metadata(), (old: Record<string, any> | undefined) => {
-        if (!old) return { [variables.provider]: { configured: data.configured, status: data.status } };
-        return {
-          ...old,
-          [variables.provider]: {
-            ...old[variables.provider],
-            configured: data.configured,
-            status: data.status,
-            lastTested: new Date().toISOString(),
-          },
-        };
-      });
+      queryClient.setQueryData(
+        providerKeys.metadata(),
+        (old: Record<string, any> | undefined) => {
+          if (!old)
+            return {
+              [variables.provider]: {
+                configured: data.configured,
+                status: data.status,
+              },
+            };
+          return {
+            ...old,
+            [variables.provider]: {
+              ...old[variables.provider],
+              configured: data.configured,
+              status: data.status,
+              lastTested: new Date().toISOString(),
+            },
+          };
+        }
+      );
 
       if (data.configured && data.status === "active") {
         showToast(`${variables.provider} connection successful`, "success");

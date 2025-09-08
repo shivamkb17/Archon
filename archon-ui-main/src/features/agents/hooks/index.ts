@@ -4,8 +4,17 @@
 
 import type { ModelConfig } from "../types";
 import type { AgentConfig } from "../../../types/agent";
-import { useAddProvider, useRemoveProvider, useTestProvider, useUpdateAgentConfig } from "./useAgentMutations";
-import { useAgentConfigs, useAvailableModels, useServices } from "./useAgentQueries";
+import {
+  useAddProvider,
+  useRemoveProvider,
+  useTestProvider,
+  useUpdateAgentConfig,
+} from "./useAgentMutations";
+import {
+  useAgentConfigs,
+  useAvailableModels,
+  useServices,
+} from "./useAgentQueries";
 
 /**
  * Main hook for agents page data and operations
@@ -37,22 +46,28 @@ export const useAgents = () => {
     costProfile: (agent.cost_profile || "medium") as "high" | "medium" | "low",
   }));
 
-  const transformedBackendServices: AgentConfig[] = services.backendServices.map((service) => ({
-    id: service.service_name,
-    name: service.display_name,
-    icon: service.icon || "⚙️",
-    description: service.description || "",
-    category: "service" as const,
-    supportsTemperature: service.supports_temperature,
-    supportsMaxTokens: service.supports_max_tokens,
-    defaultModel: service.default_model || "openai:gpt-4o-mini",
-    modelType: service.model_type as "llm" | "embedding",
-    costProfile: (service.cost_profile || "medium") as "high" | "medium" | "low",
-  }));
+  const transformedBackendServices: AgentConfig[] =
+    services.backendServices.map((service) => ({
+      id: service.service_name,
+      name: service.display_name,
+      icon: service.icon || "⚙️",
+      description: service.description || "",
+      category: "service" as const,
+      supportsTemperature: service.supports_temperature,
+      supportsMaxTokens: service.supports_max_tokens,
+      defaultModel: service.default_model || "openai:gpt-4o-mini",
+      modelType: service.model_type as "llm" | "embedding",
+      costProfile: (service.cost_profile || "medium") as
+        | "high"
+        | "medium"
+        | "low",
+    }));
 
   // Computed states
-  const isLoading = availableModels.isLoading || agentConfigs.isLoading || services.loading;
-  const hasModels = Array.isArray(availableModels.data) && availableModels.data.length > 0;
+  const isLoading =
+    availableModels.isLoading || agentConfigs.isLoading || services.loading;
+  const hasModels =
+    Array.isArray(availableModels.data) && availableModels.data.length > 0;
 
   // Operations
   const handleConfigUpdate = (agentId: string, config: ModelConfig) => {
@@ -66,7 +81,9 @@ export const useAgents = () => {
 
   return {
     // Data
-    availableModels: Array.isArray(availableModels.data) ? availableModels.data : [],
+    availableModels: Array.isArray(availableModels.data)
+      ? availableModels.data
+      : [],
     agentConfigs: agentConfigs.data || {},
     agents: transformedAgents,
     backendServices: transformedBackendServices,
@@ -103,4 +120,4 @@ export {
 };
 
 // Re-export optimistic update utilities
-export * from '../utils/optimisticUpdates';
+export * from "../utils/optimisticUpdates";
