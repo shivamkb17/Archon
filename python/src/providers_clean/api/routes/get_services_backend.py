@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from ...services import ServiceRegistryService
-from ...infrastructure.dependencies import get_service_registry_service
+from ..deps import get_service_registry_service
 
 
 router = APIRouter(prefix="/api/providers", tags=["providers"])
@@ -10,7 +10,8 @@ router = APIRouter(prefix="/api/providers", tags=["providers"])
 @router.get("/services/backend")
 async def get_backend_services_registry(
     active_only: bool = True,
-    registry_service: ServiceRegistryService = Depends(get_service_registry_service)
+    registry_service: ServiceRegistryService = Depends(
+        get_service_registry_service)
 ):
     """Get all registered backend services"""
     try:

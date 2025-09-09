@@ -7,6 +7,7 @@ from ..services import (
     ModelConfigService,
     APIKeyService,
     UsageService,
+    ServiceRegistryService,
 )
 from ..infrastructure.dependencies import get_unit_of_work
 
@@ -25,3 +26,7 @@ def get_usage_service(uow: IUnitOfWork = Depends(get_unit_of_work)) -> UsageServ
     """Get usage tracking service"""
     return UsageService(uow)
 
+
+def get_service_registry_service(uow: IUnitOfWork = Depends(get_unit_of_work)) -> ServiceRegistryService:
+    """Get service registry service for managing service/agent registry"""
+    return ServiceRegistryService(uow)
