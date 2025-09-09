@@ -34,8 +34,8 @@ export const useOptimisticUpdate = <T>(
   options: OptimisticUpdateOptions<T> = {}
 ): OptimisticUpdateResult<T> => {
   const [isUpdating, setIsUpdating] = useState(false);
-  const [status, setStatus] = useState<StatusType>(null);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [status, setStatus] = useState<StatusType | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { showToast } = useToast();
 
   const {
@@ -47,9 +47,9 @@ export const useOptimisticUpdate = <T>(
     errorTimeout = 3000,
   } = options;
 
-  const clearTimeout = useCallback(() => {
+  const clearTimeoutRef = useCallback(() => {
     if (timeoutRef.current) {
-      globalThis.clearTimeout(timeoutRef.current);
+      window.clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
     }
   }, []);
@@ -61,7 +61,7 @@ export const useOptimisticUpdate = <T>(
       currentState: T
     ): Promise<void> => {
       // Clear any existing timeouts
-      clearTimeout();
+      clearTimeoutRef();
 
       // Store previous state for potential rollback
       const previousState = currentState;
@@ -90,7 +90,7 @@ export const useOptimisticUpdate = <T>(
         }
 
         // Clear success status after timeout
-        timeoutRef.current = setTimeout(() => {
+        timeoutRef.current = window.setTimeout(() => {
           setStatus(null);
           timeoutRef.current = null;
         }, successTimeout);
@@ -110,7 +110,7 @@ export const useOptimisticUpdate = <T>(
         }
 
         // Clear error status after timeout
-        timeoutRef.current = setTimeout(() => {
+        timeoutRef.current = window.setTimeout(() => {
           setStatus(null);
           timeoutRef.current = null;
         }, errorTimeout);
@@ -120,7 +120,7 @@ export const useOptimisticUpdate = <T>(
     },
     [
       setState,
-      clearTimeout,
+      clearTimeoutRef,
       showToast,
       onSuccess,
       onError,
@@ -133,8 +133,8 @@ export const useOptimisticUpdate = <T>(
 
   // Cleanup on unmount
   React.useEffect(() => {
-    return clearTimeout;
-  }, [clearTimeout]);
+    return clearTimeoutRef;
+  }, [clearTimeoutRef]);
 
   return {
     isUpdating,
