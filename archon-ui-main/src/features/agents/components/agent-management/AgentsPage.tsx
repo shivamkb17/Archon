@@ -77,7 +77,7 @@ export const AgentsPage: React.FC = () => {
       <div className="space-y-4 mb-8">
         {currentItems.map((agent) => (
           <AgentCard
-            key={agent.id}
+            key={`${activeTab}-${agent.id}`}
             agent={agent}
             availableModels={availableModels}
             currentConfig={agentConfigs[agent.id]}
