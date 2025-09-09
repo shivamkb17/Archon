@@ -34,7 +34,8 @@ try:
 except ImportError:
     PROVIDER_INTEGRATION_AVAILABLE = False
     logger = logging.getLogger(__name__)
-    logger.warning("Provider integration not available - using legacy credential system")
+    logger.warning(
+        "Provider integration not available - using legacy credential system")
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -101,7 +102,8 @@ async def fetch_credentials_from_server():
                 global AGENT_CREDENTIALS
                 AGENT_CREDENTIALS = credentials
 
-                logger.info(f"Successfully fetched {len(credentials)} credentials from server")
+                logger.info(
+                    f"Successfully fetched {len(credentials)} credentials from server")
                 return credentials
 
         except (httpx.HTTPError, httpx.RequestError) as e:
@@ -112,7 +114,8 @@ async def fetch_credentials_from_server():
                 logger.info(f"Retrying in {retry_delay} seconds...")
                 await asyncio.sleep(retry_delay)
             else:
-                logger.error(f"Failed to fetch credentials after {max_retries} attempts")
+                logger.error(
+                    f"Failed to fetch credentials after {max_retries} attempts")
                 raise Exception("Could not fetch credentials from server")
 
 
@@ -124,44 +127,58 @@ async def lifespan(app: FastAPI):
 
     # Try to use provider integration if available
     if PROVIDER_INTEGRATION_AVAILABLE:
-        logger.info("Using clean provider integration system")
-        
+        logger.info("Attempting to use clean provider integration system")
+
         # Initialize provider integration
         provider_integration = ProviderIntegration()
-        app.state.provider_integration = provider_integration
-        
+
         try:
             # Initialize the provider system
             init_status = await provider_integration.initialize()
-            
+
             if not init_status.get('api_keys'):
-                logger.warning("No API keys configured - agents will use defaults")
-            
+                logger.warning(
+                    "No API keys configured - agents will use defaults")
+
             if not init_status.get('model_configs'):
-                logger.warning("No model configurations found - using defaults")
-            
+                logger.warning(
+                    "No model configurations found - using defaults")
+
             # Initialize agents with configured models
             app.state.agents = {}
-            
+
             for name, agent_class in AVAILABLE_AGENTS.items():
                 try:
                     # Get model from provider system
                     model = await provider_integration.get_agent_model(name)
                     app.state.agents[name] = agent_class(model=model)
-                    logger.info(f"Initialized {name} agent with model: {model}")
+                    logger.info(
+                        f"Initialized {name} agent with model: {model}")
                 except Exception as e:
                     logger.error(f"Failed to initialize {name} agent: {e}")
                     # Try with default
                     app.state.agents[name] = agent_class()
                     logger.info(f"Initialized {name} agent with default model")
-                    
+
+            # Set runtime mode only after successful initialization
+            app.state.runtime_mode = 'provider'
+            app.state.provider_integration = provider_integration
+            logger.info("Successfully initialized provider integration system")
+
         except Exception as e:
-            logger.error(f"Provider integration failed, falling back to legacy: {e}")
-            # Fall back to legacy credential system
+            logger.error(
+                f"Provider integration initialization failed, falling back to legacy: {e}")
+            # Clear provider integration on failure
+            app.state.provider_integration = None
+            # Set runtime mode to legacy and setup legacy agents
+            app.state.runtime_mode = 'legacy'
             await setup_legacy_agents(app)
+            logger.info(
+                "Transitioned to legacy mode due to provider initialization failure")
     else:
         # Use legacy credential system
         logger.info("Using legacy credential system")
+        app.state.runtime_mode = 'legacy'
         await setup_legacy_agents(app)
 
     yield
@@ -205,13 +222,13 @@ app = FastAPI(
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
-    provider_status = "provider_integration" if PROVIDER_INTEGRATION_AVAILABLE else "legacy"
-    
+    runtime_mode = getattr(app.state, 'runtime_mode', 'unknown')
+
     return {
         "status": "healthy",
         "service": "agents",
         "agents_available": list(AVAILABLE_AGENTS.keys()),
-        "provider_system": provider_status,
+        "runtime_mode": runtime_mode,
         "note": "This service only hosts PydanticAI agents",
     }
 
@@ -226,7 +243,8 @@ async def run_agent(request: AgentRequest):
     try:
         # Get the requested agent
         if request.agent_type not in app.state.agents:
-            raise HTTPException(status_code=400, detail=f"Unknown agent type: {request.agent_type}")
+            raise HTTPException(
+                status_code=400, detail=f"Unknown agent type: {request.agent_type}")
 
         agent = app.state.agents[request.agent_type]
 
@@ -239,9 +257,9 @@ async def run_agent(request: AgentRequest):
 
         # Run the agent
         result = await agent.run(request.prompt, deps)
-        
-        # Track usage if provider integration is available
-        if PROVIDER_INTEGRATION_AVAILABLE and hasattr(app.state, 'provider_integration'):
+
+        # Track usage if provider integration is available and we're in provider mode
+        if getattr(app.state, 'runtime_mode', None) == 'provider' and hasattr(app.state, 'provider_integration'):
             # Extract token counts if available (this depends on agent implementation)
             if hasattr(result, 'usage'):
                 try:
@@ -297,12 +315,13 @@ async def list_agents():
 async def stream_agent(agent_type: str, prompt: str):
     """
     Stream agent responses (if the agent supports streaming).
-    
+
     Note: Current PydanticAI agents don't support streaming natively,
     but this endpoint is here for future enhancement.
     """
     if agent_type not in app.state.agents:
-        raise HTTPException(status_code=400, detail=f"Unknown agent type: {agent_type}")
+        raise HTTPException(
+            status_code=400, detail=f"Unknown agent type: {agent_type}")
 
     async def generate() -> AsyncGenerator[str, None]:
         # For now, just run the agent normally and yield the result
@@ -318,8 +337,8 @@ async def stream_agent(agent_type: str, prompt: str):
 async def get_model_configuration():
     """Get current model configuration for all agents"""
     config = {}
-    
-    if PROVIDER_INTEGRATION_AVAILABLE and hasattr(app.state, 'provider_integration'):
+
+    if getattr(app.state, 'runtime_mode', None) == 'provider' and hasattr(app.state, 'provider_integration'):
         # Get from provider integration
         try:
             for agent_name in AVAILABLE_AGENTS.keys():
@@ -330,9 +349,9 @@ async def get_model_configuration():
         # Get from agents directly
         for name, agent in app.state.agents.items():
             config[name] = getattr(agent, "model", "unknown")
-    
+
     return {
-        "provider_system": "provider_integration" if PROVIDER_INTEGRATION_AVAILABLE else "legacy",
+        "runtime_mode": getattr(app.state, 'runtime_mode', 'unknown'),
         "models": config
     }
 
