@@ -82,10 +82,10 @@ class ProviderModel(BaseModel):
 
 class OpenRouterService:
     """Service to fetch and parse OpenRouter models"""
-    
+
     CACHE_FILE = Path(__file__).parent.parent / "openrouter_models.json"
     CACHE_DURATION = 3600  # 1 hour in seconds
-    
+
     # Map OpenRouter provider IDs to our standard names
     PROVIDER_MAPPING = {
         'openai': 'openai',
@@ -120,20 +120,20 @@ class OpenRouterService:
         'neversleep': 'neversleep',
         'sao10k': 'sao10k'
     }
-    
+
     @classmethod
     def _load_cache(cls) -> Optional[OpenRouterResponse]:
         """Load cached models if available and fresh"""
         if not cls.CACHE_FILE.exists():
             return None
-            
+
         try:
             cache_stat = cls.CACHE_FILE.stat()
             cache_age = datetime.now().timestamp() - cache_stat.st_mtime
-            
+
             if cache_age > cls.CACHE_DURATION:
                 return None
-                
+
             with open(cls.CACHE_FILE, 'r') as f:
                 data = json.load(f)
                 return OpenRouterResponse(**data)
@@ -151,7 +151,7 @@ class OpenRouterService:
                 return OpenRouterResponse(**data)
         except Exception:
             return None
-    
+
     @classmethod
     def _save_cache(cls, response: OpenRouterResponse) -> None:
         """Save response to cache file"""
@@ -161,7 +161,7 @@ class OpenRouterService:
                 json.dump(response.model_dump(), f, indent=2)
         except Exception:
             pass  # Caching is optional
-    
+
     @classmethod
     async def fetch_models(cls) -> OpenRouterResponse:
         """Fetch models from OpenRouter API or cache"""
@@ -169,16 +169,16 @@ class OpenRouterService:
         cached = cls._load_cache()
         if cached:
             return cached
-            
+
         # Fetch from API
         async with httpx.AsyncClient() as client:
             response = await client.get("https://openrouter.ai/api/v1/models")
             response.raise_for_status()
-            
+
             data = OpenRouterResponse(**response.json())
             cls._save_cache(data)
             return data
-    
+
     @classmethod
     def fetch_models_sync(cls) -> OpenRouterResponse:
         """Synchronous version of fetch_models"""
@@ -186,7 +186,7 @@ class OpenRouterService:
         cached = cls._load_cache()
         if cached:
             return cached
-            
+
         # Fetch from API
         try:
             with httpx.Client() as client:
@@ -201,7 +201,7 @@ class OpenRouterService:
             if cached_any:
                 return cached_any
             raise
-    
+
     @classmethod
     def parse_provider_from_id(cls, model_id: str) -> str:
         """Extract provider from model ID (e.g., 'openai/gpt-4' -> 'openai')"""
@@ -209,7 +209,7 @@ class OpenRouterService:
             provider_part = model_id.split('/')[0]
             return cls.PROVIDER_MAPPING.get(provider_part, provider_part)
         return 'unknown'
-    
+
     @classmethod
     def parse_model_name(cls, model_id: str) -> str:
         """Extract model name from ID (e.g., 'openai/gpt-4' -> 'gpt-4')"""
@@ -217,22 +217,22 @@ class OpenRouterService:
             model_name = model_id.split('/', 1)[1]
         else:
             model_name = model_id
-        
+
         # Remove :free, :beta, :extended or other suffixes that cause issues
         if ':' in model_name:
             model_name = model_name.split(':')[0]
-        
+
         return model_name
-    
+
     @classmethod
     def convert_to_provider_models(cls, openrouter_models: List[OpenRouterModel]) -> List[ProviderModel]:
         """Convert OpenRouter models to our simplified format"""
         provider_models = []
-        
+
         for model in openrouter_models:
             provider = cls.parse_provider_from_id(model.id)
             model_name = cls.parse_model_name(model.id)
-            
+
             # Parse costs (OpenRouter prices are per token, we want per 1M)
             try:
                 input_cost = float(model.pricing.prompt) * 1_000_000
@@ -240,18 +240,19 @@ class OpenRouterService:
             except (ValueError, TypeError):
                 input_cost = 0.0
                 output_cost = 0.0
-            
+
             # Check capabilities
             supports_vision = 'image' in model.architecture.input_modalities
             supports_tools = 'tools' in model.supported_parameters or 'tool_choice' in model.supported_parameters
             supports_reasoning = 'reasoning' in model.supported_parameters
             is_free = input_cost == 0 and output_cost == 0
-            
+
             provider_models.append(ProviderModel(
                 provider=provider,
                 model_id=model_name,
                 display_name=model.name,
-                description=model.description[:500] if model.description else "",  # Truncate long descriptions
+                # Truncate long descriptions
+                description=model.description[:500] if model.description else "",
                 context_length=model.context_length,
                 input_cost=input_cost,
                 output_cost=output_cost,
@@ -260,69 +261,96 @@ class OpenRouterService:
                 supports_reasoning=supports_reasoning,
                 is_free=is_free
             ))
-        
+
         return provider_models
-    
+
     @classmethod
     @lru_cache(maxsize=1)
     def get_all_providers(cls) -> Dict[str, List[ProviderModel]]:
         """Get all available providers and their models"""
         response = cls.fetch_models_sync()
         models = cls.convert_to_provider_models(response.data)
-        
+
         # Group by provider
         providers: Dict[str, List[ProviderModel]] = {}
         for model in models:
             if model.provider not in providers:
                 providers[model.provider] = []
             providers[model.provider].append(model)
-        
+
         # Sort models within each provider for better variety
         # Put free models first, then sort paid models by cost
         for provider in providers:
             free_models = [m for m in providers[provider] if m.is_free]
             paid_models = [m for m in providers[provider] if not m.is_free]
-            
+
             # Sort paid models by cost
             paid_models.sort(key=lambda m: m.input_cost)
-            
+
             # Combine: free models first, then paid models sorted by cost
             providers[provider] = free_models + paid_models
-        
+
         return providers
-    
+
+    @classmethod
+    async def get_all_providers_async(cls) -> Dict[str, List[ProviderModel]]:
+        """Async version of get_all_providers"""
+        response = await cls.fetch_models()
+        models = cls.convert_to_provider_models(response.data)
+
+        # Group by provider
+        providers: Dict[str, List[ProviderModel]] = {}
+        for model in models:
+            if model.provider not in providers:
+                providers[model.provider] = []
+            providers[model.provider].append(model)
+
+        # Sort models within each provider for better variety
+        # Put free models first, then sort paid models by cost
+        for provider in providers:
+            free_models = [m for m in providers[provider] if m.is_free]
+            paid_models = [m for m in providers[provider] if not m.is_free]
+
+            # Sort paid models by cost
+            paid_models.sort(key=lambda m: m.input_cost)
+
+            # Combine: free models first, then paid models sorted by cost
+            providers[provider] = free_models + paid_models
+
+        return providers
+
     @classmethod
     def get_provider_models(cls, provider: str) -> List[ProviderModel]:
         """Get models for a specific provider"""
         all_providers = cls.get_all_providers()
         return all_providers.get(provider, [])
-    
+
     @classmethod
     def get_unique_providers(cls) -> List[str]:
         """Get list of unique provider names"""
         all_providers = cls.get_all_providers()
         return sorted(all_providers.keys())
-    
+
     @classmethod
     def get_model_by_string(cls, model_string: str) -> Optional[ProviderModel]:
         """Get a specific model by its string format (e.g., 'openai:gpt-4')"""
         if ':' not in model_string:
             return None
-            
+
         provider, model_id = model_string.split(':', 1)
         models = cls.get_provider_models(provider)
-        
+
         for model in models:
             if model.model_id == model_id:
                 return model
-        
+
         return None
-    
+
     @classmethod
     def get_provider_metadata(cls, provider: str) -> Dict[str, Any]:
         """Get aggregated metadata for a provider"""
         models = cls.get_provider_models(provider)
-        
+
         if not models:
             return {
                 'provider': provider,
@@ -334,7 +362,7 @@ class OpenRouterService:
                 'supports_vision': False,
                 'supports_tools': False
             }
-        
+
         return {
             'provider': provider,
             'model_count': len(models),
@@ -355,7 +383,7 @@ class OpenRouterService:
                 for m in models[:3]  # Top 3 models
             ]
         }
-    
+
     @classmethod
     def get_all_provider_metadata(cls) -> Dict[str, Dict[str, Any]]:
         """Get metadata for all providers"""
