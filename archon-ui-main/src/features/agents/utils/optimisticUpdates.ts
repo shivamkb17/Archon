@@ -96,6 +96,14 @@ export const useOptimisticList = <T>(
       const itemId = (pendingItem as any).id || JSON.stringify(pendingItem);
       setOptimisticItems((prev) => [...prev, pendingItem]);
       setAnimatingItems((prev) => new Set([...prev, itemId]));
+      // Clear animation flag after animation completes
+      setTimeout(() => {
+        setAnimatingItems((prev) => {
+          const next = new Set(prev);
+          next.delete(itemId);
+          return next;
+        });
+      }, 300); // Match fadeIn animation duration
     } else if (pendingOperation === "remove" && pendingItem) {
       const itemId = (pendingItem as any).id || JSON.stringify(pendingItem);
       setOptimisticItems((prev) =>
@@ -105,6 +113,14 @@ export const useOptimisticList = <T>(
         })
       );
       setAnimatingItems((prev) => new Set([...prev, itemId]));
+      // Clear animation flag after animation completes
+      setTimeout(() => {
+        setAnimatingItems((prev) => {
+          const next = new Set(prev);
+          next.delete(itemId);
+          return next;
+        });
+      }, 300); // Match fadeOut animation duration
     } else if (!pendingOperation && !error) {
       setOptimisticItems(items);
       setAnimatingItems(new Set());
