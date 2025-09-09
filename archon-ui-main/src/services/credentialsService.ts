@@ -178,7 +178,7 @@ class CredentialsService {
     return [];
   }
 
-  async setCredential(key: string, value: string): Promise<boolean> {
+  async setCredential(key: string, value: unknown): Promise<boolean> {
     try {
       const response = await fetch(`${this.baseUrl}/api/app-settings/${key}`, {
         method: "POST",
@@ -203,7 +203,7 @@ class CredentialsService {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ value: String(value) }),
+          body: JSON.stringify({ value }),
         })
       );
 
