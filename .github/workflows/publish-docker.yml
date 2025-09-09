@@ -3,16 +3,12 @@ name: Build and Publish Docker Images
 on:
   push:
     branches:
-      - main
-      - master
-      - develop
+      - main1
     tags:
       - v*
   pull_request:
     branches:
-      - main
-      - master
-      - develop
+      - main1
   workflow_dispatch:
 
 env:
