@@ -1,19 +1,54 @@
 /**
- * Agents Components Exports
+ * Agents Components Exports - Organized by Business Domain
  */
 
-// Main page components
-export { AgentsPage } from "./AgentsPage";
-export { AgentCard } from "./AgentCard";
-export { ProviderSettings } from "./ProviderSettings";
-export { ModelSelectionModal } from "./ModelSelectionModal";
-export { AddProviderModal } from "./AddProviderModal";
+// ===== AGENT MANAGEMENT =====
+// Core agent configuration and display components
+export { AgentsPage } from "./agent-management/AgentsPage";
+export { AgentCard } from "./agent-management/AgentCard";
+export { AgentModelPanel } from "./agent-management/AgentModelPanel";
+export { AgentSettingsDropdown } from "./agent-management/AgentSettingsDropdown";
+export { ApiKeysSection } from "./agent-management/ApiKeysSection";
+export { NoModelsWarning } from "./agent-management/NoModelsWarning";
+export { AgentTabNavigation } from "./agent-management/AgentTabNavigation";
 
-// Optimistic update components
+// ===== PROVIDER MANAGEMENT =====
+// AI provider setup and configuration components
+export { AddProviderModal } from "./provider-management/AddProviderModal";
+export { ProviderCard } from "./provider-management/ProviderCard";
+export { ProviderSettings } from "./provider-management/ProviderSettings";
+export { ProviderForm } from "./provider-management/ProviderForm";
+export { ProviderList } from "./provider-management/ProviderList";
+
+// ===== MODEL SELECTION =====
+// Model choosing and configuration components
+export { ModelSelectionModal } from "./model-selection/ModelSelectionModal";
+export { ModelCard } from "./model-selection/ModelCard";
+export { AdvancedSettings } from "./model-selection/AdvancedSettings";
+
+// ===== UI FEEDBACK =====
+// User interaction feedback and status components
 export {
   OptimisticStatus,
   OptimisticWrapper,
   OptimisticButton,
   OptimisticListItem,
   OptimisticToast,
-} from "./OptimisticUpdateComponents";
+} from "./ui-feedback/OptimisticUpdateComponents";
+export { StatusIndicator } from "./ui-feedback/StatusIndicator";
+export { AgentsPageError } from "./ui-feedback/AgentsPageError";
+
+// ===== COMMON COMPONENTS =====
+// Reusable UI components used across agent features
+export { ModalHeader } from "./common/ModalHeader";
+export { ModalFooter } from "./common/ModalFooter";
+export { SearchInput } from "./common/SearchInput";
+export { AgentsPageHeader } from "./common/AgentsPageHeader";
+
+// ===== COMMON COMPONENTS & UTILITIES =====
+// Shared components, utilities, hooks, and styles
+export * from "./common";
+
+// ===== UTILITIES =====
+// Helper functions and utilities
+export * from "./model-selection/modelSelectionUtils";

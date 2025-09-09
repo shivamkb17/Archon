@@ -1,12 +1,27 @@
-import { useState, useMemo } from 'react';
-import { Link as LinkIcon, Upload, Trash2, RefreshCw, Code, FileText, Brain, BoxIcon, Globe, ChevronRight, Pencil } from 'lucide-react';
-import { Card } from '../ui/Card';
-import { Badge } from '../ui/Badge';
-import { KnowledgeItem, KnowledgeItemMetadata } from '../../services/knowledgeBaseService';
-import { useCardTilt } from '../../hooks/useCardTilt';
-import { CodeViewerModal, CodeExample } from '../code/CodeViewerModal';
-import { EditKnowledgeItemModal } from './EditKnowledgeItemModal';
-import '../../styles/card-animations.css';
+import { useState, useMemo } from "react";
+import {
+  Link as LinkIcon,
+  Upload,
+  Trash2,
+  RefreshCw,
+  Code,
+  FileText,
+  Brain,
+  BoxIcon,
+  Globe,
+  ChevronRight,
+  Pencil,
+} from "lucide-react";
+import { Card } from "../ui/Card";
+import { Badge } from "../ui/Badge";
+import {
+  KnowledgeItem,
+  KnowledgeItemMetadata,
+} from "../../services/knowledgeBaseService";
+import { useCardTilt } from "../../hooks/useCardTilt";
+import { CodeViewerModal, CodeExample } from "../code/CodeViewerModal";
+import { EditKnowledgeItemModal } from "./EditKnowledgeItemModal";
+import "../../styles/card-animations.css";
 
 // Define GroupedKnowledgeItem interface locally
 interface GroupedKnowledgeItem {
@@ -20,16 +35,18 @@ interface GroupedKnowledgeItem {
 }
 
 // Helper function to guess language from title
-const guessLanguageFromTitle = (title: string = ''): string => {
+const guessLanguageFromTitle = (title: string = ""): string => {
   const titleLower = title.toLowerCase();
-  if (titleLower.includes('javascript') || titleLower.includes('js')) return 'javascript';
-  if (titleLower.includes('typescript') || titleLower.includes('ts')) return 'typescript';
-  if (titleLower.includes('react')) return 'jsx';
-  if (titleLower.includes('html')) return 'html';
-  if (titleLower.includes('css')) return 'css';
-  if (titleLower.includes('python')) return 'python';
-  if (titleLower.includes('java')) return 'java';
-  return 'javascript'; // Default
+  if (titleLower.includes("javascript") || titleLower.includes("js"))
+    return "javascript";
+  if (titleLower.includes("typescript") || titleLower.includes("ts"))
+    return "typescript";
+  if (titleLower.includes("react")) return "jsx";
+  if (titleLower.includes("html")) return "html";
+  if (titleLower.includes("css")) return "css";
+  if (titleLower.includes("python")) return "python";
+  if (titleLower.includes("java")) return "java";
+  return "javascript"; // Default
 };
 
 // Tags display component
@@ -39,13 +56,13 @@ interface TagsDisplayProps {
 
 const TagsDisplay = ({ tags }: TagsDisplayProps) => {
   const [showTooltip, setShowTooltip] = useState(false);
-  
+
   if (!tags || tags.length === 0) return null;
-  
+
   const visibleTags = tags.slice(0, 4);
   const remainingTags = tags.slice(4);
   const hasMoreTags = remainingTags.length > 0;
-  
+
   return (
     <div className="w-full">
       <div className="flex flex-wrap gap-2 h-full">
@@ -145,7 +162,7 @@ export const GroupedKnowledgeItemCard = ({
   groupedItem,
   onDelete,
   onUpdate,
-  onRefresh
+  onRefresh,
 }: GroupedKnowledgeItemCardProps) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
@@ -162,44 +179,52 @@ export const GroupedKnowledgeItemCard = ({
 
   // Updated color logic based on individual item's source type and knowledge type
   const getCardColor = (item: KnowledgeItem) => {
-    if (item.metadata.source_type === 'url') {
+    if (item.metadata.source_type === "url") {
       // Web documents
-      return item.metadata.knowledge_type === 'technical' ? 'blue' : 'cyan';
+      return item.metadata.knowledge_type === "technical" ? "blue" : "cyan";
     } else {
       // Uploaded documents
-      return item.metadata.knowledge_type === 'technical' ? 'purple' : 'pink';
+      return item.metadata.knowledge_type === "technical" ? "purple" : "pink";
     }
   };
-  
+
   // Use active item for main card color
   const accentColor = getCardColor(activeItem);
-  
+
   // Updated icon colors to match active card
   const getSourceIconColor = (item: KnowledgeItem) => {
-    if (item.metadata.source_type === 'url') {
-      return item.metadata.knowledge_type === 'technical' ? 'text-blue-500' : 'text-cyan-500';
+    if (item.metadata.source_type === "url") {
+      return item.metadata.knowledge_type === "technical"
+        ? "text-blue-500"
+        : "text-cyan-500";
     } else {
-      return item.metadata.knowledge_type === 'technical' ? 'text-purple-500' : 'text-pink-500';
+      return item.metadata.knowledge_type === "technical"
+        ? "text-purple-500"
+        : "text-pink-500";
     }
   };
-  
+
   const getTypeIconColor = (item: KnowledgeItem) => {
-    if (item.metadata.source_type === 'url') {
-      return item.metadata.knowledge_type === 'technical' ? 'text-blue-500' : 'text-cyan-500';
+    if (item.metadata.source_type === "url") {
+      return item.metadata.knowledge_type === "technical"
+        ? "text-blue-500"
+        : "text-cyan-500";
     } else {
-      return item.metadata.knowledge_type === 'technical' ? 'text-purple-500' : 'text-pink-500';
+      return item.metadata.knowledge_type === "technical"
+        ? "text-purple-500"
+        : "text-pink-500";
     }
   };
-  
+
   // Use active item for icons
   // const TypeIcon = activeItem.metadata.knowledge_type === 'technical' ? BoxIcon : Brain;
   // const sourceIconColor = getSourceIconColor(activeItem);
   // const typeIconColor = getTypeIconColor(activeItem);
-  
+
   const statusColorMap = {
-    active: 'green',
-    processing: 'blue',
-    error: 'pink'
+    active: "green",
+    processing: "blue",
+    error: "pink",
   };
 
   // Use the tilt effect hook - but only apply the handlers if not grouped
@@ -210,7 +235,7 @@ export const GroupedKnowledgeItemCard = ({
   });
 
   // Only use tilt handlers if not grouped and modal is not open
-  const tiltHandlers = (isGrouped || showCodeModal) ? {} : handlers;
+  const tiltHandlers = isGrouped || showCodeModal ? {} : handlers;
 
   const handleDelete = () => {
     setIsRemoving(true);
@@ -241,8 +266,8 @@ export const GroupedKnowledgeItemCard = ({
   // }, [groupedItem.items]);
 
   // Calculate active item's code examples count from metadata
-  const activeCodeExamples = activeItem.metadata.code_examples_count || 0;
-  
+  const activeCodeExamples = activeItem.code_examples?.length || 0;
+
   // Calculate active item's word count
   const activeWordCount = activeItem.metadata.word_count || 0;
 
@@ -267,16 +292,27 @@ export const GroupedKnowledgeItemCard = ({
   const formattedCodeExamples = useMemo(() => {
     return groupedItem.items.reduce((examples: CodeExample[], item) => {
       if (!item || !item.code_examples) return examples;
-      
-      const itemExamples = item.code_examples.map((example: any, index: number) => ({
-        id: example.id || `${item.id || 'unknown'}-example-${index}`,
-        title: example.metadata?.example_name || example.metadata?.title || example.summary?.split('\n')[0] || 'Code Example',
-        description: example.summary || 'No description available',
-        language: example.metadata?.language || guessLanguageFromTitle(example.metadata?.title || ''),
-        code: example.content || example.metadata?.code || '// Code example not available',
-        tags: example.metadata?.tags || [],
-      }));
-      
+
+      const itemExamples = item.code_examples.map(
+        (example: any, index: number) => ({
+          id: example.id || `${item.id || "unknown"}-example-${index}`,
+          title:
+            example.metadata?.example_name ||
+            example.metadata?.title ||
+            example.summary?.split("\n")[0] ||
+            "Code Example",
+          description: example.summary || "No description available",
+          language:
+            example.metadata?.language ||
+            guessLanguageFromTitle(example.metadata?.title || ""),
+          code:
+            example.content ||
+            example.metadata?.code ||
+            "// Code example not available",
+          tags: example.metadata?.tags || [],
+        })
+      );
+
       return [...examples, ...itemExamples];
     }, []);
   }, [groupedItem.items]);
@@ -284,10 +320,10 @@ export const GroupedKnowledgeItemCard = ({
   // Function to shuffle to the next card
   const shuffleToNextCard = () => {
     if (!isGrouped || isShuffling) return;
-    
+
     setIsShuffling(true);
     const nextIndex = (activeCardIndex + 1) % groupedItem.items.length;
-    
+
     // Add a small delay to allow animation to complete
     setTimeout(() => {
       setActiveCardIndex(nextIndex);
@@ -301,13 +337,13 @@ export const GroupedKnowledgeItemCard = ({
       {/* Header section - fixed height */}
       <div className="flex items-center gap-2 mb-3 card-3d-layer-1">
         {/* Source type icon */}
-        {item.metadata.source_type === 'url' ? (
+        {item.metadata.source_type === "url" ? (
           <LinkIcon className={`w-4 h-4 ${getSourceIconColor(item)}`} />
         ) : (
           <Upload className={`w-4 h-4 ${getSourceIconColor(item)}`} />
         )}
         {/* Knowledge type icon */}
-        {item.metadata.knowledge_type === 'technical' ? (
+        {item.metadata.knowledge_type === "technical" ? (
           <BoxIcon className={`w-4 h-4 ${getTypeIconColor(item)}`} />
         ) : (
           <Brain className={`w-4 h-4 ${getTypeIconColor(item)}`} />
@@ -321,7 +357,7 @@ export const GroupedKnowledgeItemCard = ({
           {isGrouped && (
             <button
               onClick={shuffleToNextCard}
-              className="group flex items-center gap-1 px-2 py-1 bg-blue-500/20 border border-blue-500/40 rounded-full backdrop-blur-sm shadow-[0_0_15px_rgba(59,130,246,0.3)] hover:shadow-[0_0_20px_rgba(59,130,246,0.5)] transition-all duration-300 card-3d-layer-3 flex-shrink-0"
+              className="group flex items-center gap-1 px-2 py-1 bg-blue-500/20 border border-blue-500/40 rounded-full backdrop-blur-sm shadow-[0_0_15px_rgba(0,0,0,0.1)] hover:shadow-[0_0_20px_rgba(0,0,0,0.15)] transition-all duration-300 card-3d-layer-3 flex-shrink-0"
               onMouseEnter={() => setShowTooltip(true)}
               onMouseLeave={() => setShowTooltip(false)}
             >
@@ -356,33 +392,37 @@ export const GroupedKnowledgeItemCard = ({
           </button>
         </div>
       </div>
-      
+
       {/* Description section - fixed height */}
       <p className="text-gray-600 dark:text-zinc-400 text-sm mb-3 line-clamp-2 card-3d-layer-2">
-        {item.metadata.description || 
-          (groupedItem.items.length === 1 
+        {item.metadata.description ||
+          (groupedItem.items.length === 1
             ? `Content from ${groupedItem.domain}`
-            : `Source ${activeCardIndex + 1} of ${groupedItem.items.length} from ${groupedItem.domain}`)}
+            : `Source ${activeCardIndex + 1} of ${
+                groupedItem.items.length
+              } from ${groupedItem.domain}`)}
       </p>
-      
+
       {/* Tags section - flexible height with flex-1 */}
       <div className="flex-1 flex flex-col card-3d-layer-2 min-h-[4rem]">
         <TagsDisplay tags={item.metadata.tags || []} />
       </div>
-      
+
       {/* Footer section - anchored to bottom */}
       <div className="flex items-end justify-between mt-auto card-3d-layer-1">
         {/* Left side - refresh button and updated stacked */}
         <div className="flex flex-col">
-          {item.metadata.source_type === 'url' && (
+          {item.metadata.source_type === "url" && (
             <button
               onClick={handleRefresh}
               className={`flex items-center gap-1 mb-1 px-2 py-1 transition-colors ${
-                item.metadata.knowledge_type === 'technical' 
-                  ? 'text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300'
-                  : 'text-cyan-500 hover:text-cyan-600 dark:text-cyan-400 dark:hover:text-cyan-300'
+                item.metadata.knowledge_type === "technical"
+                  ? "text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
+                  : "text-cyan-500 hover:text-cyan-600 dark:text-cyan-400 dark:hover:text-cyan-300"
               }`}
-              title={`Refresh from: ${item.metadata.original_url || item.url || 'URL not available'}`}
+              title={`Refresh from: ${
+                item.metadata.original_url || item.url || "URL not available"
+              }`}
             >
               <RefreshCw className="w-3 h-3" />
               <span className="text-sm font-medium">Recrawl</span>
@@ -392,7 +432,7 @@ export const GroupedKnowledgeItemCard = ({
             Updated: {new Date(groupedItem.updated_at).toLocaleDateString()}
           </span>
         </div>
-        
+
         {/* Right side - code examples and status inline */}
         <div className="flex items-center gap-2">
           {/* Code examples badge - updated colors */}
@@ -403,25 +443,39 @@ export const GroupedKnowledgeItemCard = ({
               onMouseEnter={() => setShowCodeTooltip(true)}
               onMouseLeave={() => setShowCodeTooltip(false)}
             >
-              <div className={`flex items-center gap-1 px-2 py-1 rounded-full backdrop-blur-sm transition-all duration-300 ${
-                item.metadata.source_type === 'url'
-                  ? item.metadata.knowledge_type === 'technical'
-                    ? 'bg-blue-500/20 border border-blue-500/40 shadow-[0_0_15px_rgba(59,130,246,0.3)] hover:shadow-[0_0_20px_rgba(59,130,246,0.5)]'
-                    : 'bg-cyan-500/20 border border-cyan-500/40 shadow-[0_0_15px_rgba(34,211,238,0.3)] hover:shadow-[0_0_20px_rgba(34,211,238,0.5)]'
-                  : item.metadata.knowledge_type === 'technical'
-                    ? 'bg-purple-500/20 border border-purple-500/40 shadow-[0_0_15px_rgba(168,85,247,0.3)] hover:shadow-[0_0_20px_rgba(168,85,247,0.5)]'
-                    : 'bg-pink-500/20 border border-pink-500/40 shadow-[0_0_15px_rgba(236,72,153,0.3)] hover:shadow-[0_0_20px_rgba(236,72,153,0.5)]'
-              }`}>
-                <Code className={`w-3 h-3 ${
-                  item.metadata.source_type === 'url'
-                    ? item.metadata.knowledge_type === 'technical' ? 'text-blue-400' : 'text-cyan-400'
-                    : item.metadata.knowledge_type === 'technical' ? 'text-purple-400' : 'text-pink-400'
-                }`} />
-                <span className={`text-xs font-medium ${
-                  item.metadata.source_type === 'url'
-                    ? item.metadata.knowledge_type === 'technical' ? 'text-blue-400' : 'text-cyan-400'
-                    : item.metadata.knowledge_type === 'technical' ? 'text-purple-400' : 'text-pink-400'
-                }`}>
+              <div
+                className={`flex items-center gap-1 px-2 py-1 rounded-full backdrop-blur-sm transition-all duration-300 ${
+                  item.metadata.source_type === "url"
+                    ? item.metadata.knowledge_type === "technical"
+                      ? "bg-blue-500/20 border border-blue-500/40 shadow-[0_0_15px_rgba(59,130,246,0.3)] hover:shadow-[0_0_20px_rgba(59,130,246,0.5)]"
+                      : "bg-cyan-500/20 border border-cyan-500/40 shadow-[0_0_15px_rgba(34,211,238,0.3)] hover:shadow-[0_0_20px_rgba(34,211,238,0.5)]"
+                    : item.metadata.knowledge_type === "technical"
+                    ? "bg-purple-500/20 border border-purple-500/40 shadow-[0_0_15px_rgba(168,85,247,0.3)] hover:shadow-[0_0_20px_rgba(168,85,247,0.5)]"
+                    : "bg-pink-500/20 border border-pink-500/40 shadow-[0_0_15px_rgba(236,72,153,0.3)] hover:shadow-[0_0_20px_rgba(236,72,153,0.5)]"
+                }`}
+              >
+                <Code
+                  className={`w-3 h-3 ${
+                    item.metadata.source_type === "url"
+                      ? item.metadata.knowledge_type === "technical"
+                        ? "text-blue-400"
+                        : "text-cyan-400"
+                      : item.metadata.knowledge_type === "technical"
+                      ? "text-purple-400"
+                      : "text-pink-400"
+                  }`}
+                />
+                <span
+                  className={`text-xs font-medium ${
+                    item.metadata.source_type === "url"
+                      ? item.metadata.knowledge_type === "technical"
+                        ? "text-blue-400"
+                        : "text-cyan-400"
+                      : item.metadata.knowledge_type === "technical"
+                      ? "text-purple-400"
+                      : "text-pink-400"
+                  }`}
+                >
                   {activeCodeExamples}
                 </span>
               </div>
@@ -467,13 +521,13 @@ export const GroupedKnowledgeItemCard = ({
               </div>
             )}
           </div>
-          
+
           <Badge
-            color={statusColorMap[item.metadata.status || 'active'] as any}
+            color={statusColorMap[item.metadata.status || "active"] as any}
             className="card-3d-layer-2"
           >
-            {(item.metadata.status || 'active').charAt(0).toUpperCase() +
-              (item.metadata.status || 'active').slice(1)}
+            {(item.metadata.status || "active").charAt(0).toUpperCase() +
+              (item.metadata.status || "active").slice(1)}
           </Badge>
         </div>
       </div>
@@ -483,11 +537,11 @@ export const GroupedKnowledgeItemCard = ({
   return (
     <div
       ref={cardRef}
-      className={`relative h-full ${isRemoving ? 'card-removing' : ''}`}
+      className={`relative h-full ${isRemoving ? "card-removing" : ""}`}
       style={{
-        transform: isGrouped ? 'perspective(1200px)' : tiltStyles.transform,
+        transform: isGrouped ? "perspective(1200px)" : tiltStyles.transform,
         transition: tiltStyles.transition,
-        transformStyle: 'preserve-3d',
+        transformStyle: "preserve-3d",
       }}
       {...tiltHandlers}
     >
@@ -500,13 +554,18 @@ export const GroupedKnowledgeItemCard = ({
             style={{
               zIndex: 1,
               transform:
-                'translateZ(-60px) translateY(-16px) translateX(-8px) rotateX(-2deg) rotateY(-2deg)',
-              transformStyle: 'preserve-3d',
-              filter: 'drop-shadow(0 10px 8px rgba(0, 0, 0, 0.15))',
+                "translateZ(-60px) translateY(-16px) translateX(-8px) rotateX(-2deg) rotateY(-2deg)",
+              transformStyle: "preserve-3d",
+              filter: "drop-shadow(0 10px 8px rgba(0, 0, 0, 0.15))",
             }}
           >
             <Card
-              accentColor={getCardColor(groupedItem.items[(activeCardIndex + groupedItem.items.length - 2) % groupedItem.items.length])}
+              accentColor={getCardColor(
+                groupedItem.items[
+                  (activeCardIndex + groupedItem.items.length - 2) %
+                    groupedItem.items.length
+                ]
+              )}
               className="w-full h-full bg-white/60 dark:bg-zinc-900/60 backdrop-blur-md shadow-md opacity-60 overflow-hidden"
             >
               {/* Add a simplified version of the content for depth */}
@@ -515,25 +574,30 @@ export const GroupedKnowledgeItemCard = ({
                   groupedItem.items[
                     (activeCardIndex + groupedItem.items.length - 2) %
                       groupedItem.items.length
-                  ],
+                  ]
                 )}
               </div>
             </Card>
           </div>
-          
+
           {/* Second card (middle of stack) */}
           <div
             className="absolute top-0 left-0 w-full h-full"
             style={{
               zIndex: 2,
               transform:
-                'translateZ(-30px) translateY(-8px) translateX(-4px) rotateX(-1deg) rotateY(-1deg)',
-              transformStyle: 'preserve-3d',
-              filter: 'drop-shadow(0 8px 6px rgba(0, 0, 0, 0.1))',
+                "translateZ(-30px) translateY(-8px) translateX(-4px) rotateX(-1deg) rotateY(-1deg)",
+              transformStyle: "preserve-3d",
+              filter: "drop-shadow(0 8px 6px rgba(0, 0, 0, 0.1))",
             }}
           >
             <Card
-              accentColor={getCardColor(groupedItem.items[(activeCardIndex + groupedItem.items.length - 1) % groupedItem.items.length])}
+              accentColor={getCardColor(
+                groupedItem.items[
+                  (activeCardIndex + groupedItem.items.length - 1) %
+                    groupedItem.items.length
+                ]
+              )}
               className="w-full h-full bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md shadow-md opacity-80 overflow-hidden"
             >
               {/* Add a simplified version of the content for depth */}
@@ -542,21 +606,23 @@ export const GroupedKnowledgeItemCard = ({
                   groupedItem.items[
                     (activeCardIndex + groupedItem.items.length - 1) %
                       groupedItem.items.length
-                  ],
+                  ]
                 )}
               </div>
             </Card>
           </div>
         </>
       )}
-      
+
       {/* Main card (top of stack) - with animation for shuffling */}
       <div
-        className={`relative z-10 transition-all duration-300 h-full ${isShuffling ? 'animate-card-shuffle-out' : 'opacity-100 scale-100'}`}
+        className={`relative z-10 transition-all duration-300 h-full ${
+          isShuffling ? "animate-card-shuffle-out" : "opacity-100 scale-100"
+        }`}
         style={{
-          transform: 'translateZ(0)',
-          transformStyle: 'preserve-3d',
-          filter: 'drop-shadow(0 4px 3px rgba(0, 0, 0, 0.07))',
+          transform: "translateZ(0)",
+          transformStyle: "preserve-3d",
+          filter: "drop-shadow(0 4px 3px rgba(0, 0, 0, 0.07))",
         }}
       >
         <Card
@@ -571,20 +637,20 @@ export const GroupedKnowledgeItemCard = ({
               backgroundPosition: tiltStyles.reflectionPosition,
             }}
           ></div>
-          
+
           {/* Card content */}
           {renderCardContent()}
         </Card>
       </div>
-      
+
       {/* Incoming card animation - only visible during shuffle */}
       {isShuffling && (
         <div
           className="absolute inset-0 z-20 animate-card-shuffle-in"
           style={{
-            transform: 'translateZ(30px)',
-            transformStyle: 'preserve-3d',
-            filter: 'drop-shadow(0 4px 3px rgba(0, 0, 0, 0.07))',
+            transform: "translateZ(30px)",
+            transformStyle: "preserve-3d",
+            filter: "drop-shadow(0 4px 3px rgba(0, 0, 0, 0.07))",
           }}
         >
           <Card
@@ -599,17 +665,17 @@ export const GroupedKnowledgeItemCard = ({
                 backgroundPosition: tiltStyles.reflectionPosition,
               }}
             ></div>
-            
+
             {/* Card content for next item */}
             {renderCardContent(
               groupedItem.items[
                 (activeCardIndex + 1) % groupedItem.items.length
-              ],
+              ]
             )}
           </Card>
         </div>
       )}
-      
+
       {/* Sources tooltip */}
       {showTooltip && isGrouped && (
         <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 bg-black/90 dark:bg-zinc-800/90 backdrop-blur-md text-white text-xs rounded-lg py-2 px-3 shadow-lg z-50 whitespace-nowrap max-w-xs">
@@ -619,7 +685,9 @@ export const GroupedKnowledgeItemCard = ({
           {groupedItem.items.map((item, index) => (
             <div
               key={index}
-              className={`text-gray-300 ${activeCardIndex === index ? 'text-blue-300 font-medium' : ''}`}
+              className={`text-gray-300 ${
+                activeCardIndex === index ? "text-blue-300 font-medium" : ""
+              }`}
             >
               {index + 1}. {item.title}
             </div>
@@ -627,7 +695,7 @@ export const GroupedKnowledgeItemCard = ({
           <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-black dark:border-t-zinc-800"></div>
         </div>
       )}
-      
+
       {/* Code Examples Modal */}
       {showCodeModal && formattedCodeExamples.length > 0 && (
         <CodeViewerModal
@@ -635,21 +703,21 @@ export const GroupedKnowledgeItemCard = ({
           onClose={() => setShowCodeModal(false)}
         />
       )}
-      
+
       {/* Delete Confirm Modal */}
       {showDeleteConfirm && (
         <DeleteConfirmModal
           onConfirm={handleDelete}
           onCancel={() => setShowDeleteConfirm(false)}
-          title={isGrouped ? 'Delete Grouped Sources' : 'Delete Knowledge Item'}
+          title={isGrouped ? "Delete Grouped Sources" : "Delete Knowledge Item"}
           message={
             isGrouped
               ? `Are you sure you want to delete all ${groupedItem.items.length} sources from ${groupedItem.domain}? This action cannot be undone.`
-              : 'Are you sure you want to delete this knowledge item? This action cannot be undone.'
+              : "Are you sure you want to delete this knowledge item? This action cannot be undone."
           }
         />
       )}
-      
+
       {/* Edit Modal - edits the active item */}
       {showEditModal && activeItem && (
         <EditKnowledgeItemModal
@@ -662,4 +730,4 @@ export const GroupedKnowledgeItemCard = ({
       )}
     </div>
   );
-}; 
+};

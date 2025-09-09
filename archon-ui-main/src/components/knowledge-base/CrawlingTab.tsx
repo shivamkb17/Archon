@@ -1,7 +1,7 @@
-import { motion, AnimatePresence } from 'framer-motion';
-import { CrawlingProgressCard } from './CrawlingProgressCard';
-import { CrawlProgressData } from '../../types/crawl';
-import { AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence } from "framer-motion";
+import { CrawlingProgressCard } from "./CrawlingProgressCard";
+import { CrawlProgressData } from "../../types/crawl";
+import { AlertCircle } from "lucide-react";
 
 interface CrawlingTabProps {
   progressItems: CrawlProgressData[];
@@ -18,11 +18,12 @@ export const CrawlingTab = ({
   onProgressError,
   onRetryProgress,
   onStopProgress,
-  onDismissProgress
+  onDismissProgress,
 }: CrawlingTabProps) => {
   // Group progress items by type for better organization
   const groupedItems = progressItems.reduce((acc, item) => {
-    const type = item.crawlType || (item.uploadType === 'document' ? 'upload' : 'normal');
+    const type =
+      item.crawlType || (item.uploadType === "document" ? "upload" : "normal");
     if (!acc[type]) acc[type] = [];
     acc[type].push(item);
     return acc;
@@ -30,26 +31,31 @@ export const CrawlingTab = ({
 
   const getSectionTitle = (type: string) => {
     switch (type) {
-      case 'sitemap': return 'Sitemap Crawls';
-      case 'llms-txt': return 'LLMs.txt Crawls';
-      case 'upload': return 'Document Uploads';
-      case 'refresh': return 'Refreshing Sources';
-      default: return 'Web Crawls';
+      case "sitemap":
+        return "Sitemap Crawls";
+      case "llms-txt":
+        return "LLMs.txt Crawls";
+      case "upload":
+        return "Document Uploads";
+      case "refresh":
+        return "Refreshing Sources";
+      default:
+        return "Web Crawls";
     }
   };
 
   const getSectionDescription = (type: string) => {
     switch (type) {
-      case 'sitemap': 
-        return 'Processing sitemap.xml files to discover and crawl all listed pages';
-      case 'llms-txt': 
-        return 'Extracting content from llms.txt files for AI model training';
-      case 'upload': 
-        return 'Processing uploaded documents and extracting content';
-      case 'refresh': 
-        return 'Re-crawling existing sources to update content';
-      default: 
-        return 'Recursively crawling websites to extract knowledge';
+      case "sitemap":
+        return "Processing sitemap.xml files to discover and crawl all listed pages";
+      case "llms-txt":
+        return "Extracting content from llms.txt files for AI model training";
+      case "upload":
+        return "Processing uploaded documents and extracting content";
+      case "refresh":
+        return "Re-crawling existing sources to update content";
+      default:
+        return "Recursively crawling websites to extract knowledge";
     }
   };
 
@@ -96,7 +102,9 @@ export const CrawlingTab = ({
                   progressId={progressData.progressId}
                   initialData={progressData}
                   onComplete={onProgressComplete}
-                  onError={(error) => onProgressError(error, progressData.progressId)}
+                  onError={(error) =>
+                    onProgressError(error, progressData.progressId)
+                  }
                   onRetry={() => onRetryProgress(progressData.progressId)}
                   onDismiss={() => onDismissProgress(progressData.progressId)}
                   onStop={() => onStopProgress(progressData.progressId)}

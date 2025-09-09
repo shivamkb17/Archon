@@ -6,7 +6,7 @@
 
 import React from "react";
 import { CheckCircle, XCircle, Loader2, AlertCircle } from "lucide-react";
-import { cn } from "../../../lib/utils";
+import { cn } from "../../../../lib/utils";
 
 /**
  * Status indicator for optimistic updates

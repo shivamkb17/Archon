@@ -12,32 +12,19 @@ import React, {
   useRef,
   useMemo,
 } from "react";
-import {
-  Settings2,
-  AlertCircle,
-  Check,
-  ChevronDown,
-  Zap,
-  DollarSign,
-  Activity,
-  Clock,
-  CheckCircle,
-  XCircle,
-  MoreVertical,
-  Sliders,
-  Edit3,
-} from "lucide-react";
-import { useToast } from "../../../contexts/ToastContext";
-import type { AgentConfig } from "../../../types/agent";
+import { Clock, CheckCircle, XCircle } from "lucide-react";
+import { useToast } from "../../../../contexts/ToastContext";
+import type { AgentConfig } from "../../../../types/agent";
 import type {
   AvailableModel,
   ModelConfig,
   ServiceType,
-} from "../../../types/cleanProvider";
-import { Button } from "../../../components/ui/Button";
-import { Badge } from "../../../components/ui/Badge";
-import { ModelSelectionModal } from "./ModelSelectionModal";
-import { useAgents } from "../hooks";
+} from "../../../../types/cleanProvider";
+import { Badge } from "../../../../components/ui/Badge";
+import { ModelSelectionModal } from "../model-selection/ModelSelectionModal";
+import { useAgents } from "../../hooks";
+import { AgentModelPanel } from "./AgentModelPanel";
+import { AgentSettingsDropdown } from "./AgentSettingsDropdown";
 
 interface AgentCardProps {
   agent: AgentConfig;
@@ -361,78 +348,18 @@ export const AgentCard: React.FC<AgentCardProps> = React.memo(
             <div className="flex items-center gap-2">{statusIcon}</div>
           </div>
 
-          {/* Current Configuration Summary */}
-          <div className="mt-3 pt-3 border-t border-zinc-800/50">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4 text-xs text-gray-500">
-                <span className="flex items-center gap-1">
-                  <Zap className="w-3 h-3" />
-                  {selectedModel
-                    ? selectedModel.split(":")[1] || selectedModel
-                    : "No model selected"}
-                </span>
-                {agent.supportsTemperature &&
-                  currentConfig?.temperature !== undefined && (
-                    <span className="flex items-center gap-1">
-                      <Sliders className="w-3 h-3" />
-                      {currentConfig.temperature}
-                    </span>
-                  )}
-                {agent.supportsMaxTokens &&
-                  currentConfig?.max_tokens !== undefined && (
-                    <span className="flex items-center gap-1">
-                      <Activity className="w-3 h-3" />
-                      {currentConfig.max_tokens}
-                    </span>
-                  )}
-              </div>
-              <Button
-                onClick={() => setIsModalOpen(true)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    setIsModalOpen(true);
-                  }
-                }}
-                variant="ghost"
-                size="sm"
-                className="text-xs flex items-center gap-1 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-zinc-900"
-                disabled={isSaving}
-                aria-label={
-                  isSaving
-                    ? `Saving ${agent.name} configuration`
-                    : `Configure ${agent.name} settings`
-                }
-                aria-describedby={isSaving ? "saving-status" : undefined}
-              >
-                {isSaving ? (
-                  <>
-                    <Clock
-                      className="w-3 h-3 animate-spin"
-                      aria-hidden="true"
-                    />
-                    <span id="saving-status">Saving...</span>
-                  </>
-                ) : (
-                  <>
-                    <Edit3 className="w-3 h-3" aria-hidden="true" />
-                    Configure
-                  </>
-                )}
-              </Button>
-            </div>
-
-            {!isModelAvailable && selectedModel && (
-              <p
-                className="mt-2 text-xs text-yellow-500 flex items-center gap-1"
-                role="alert"
-                aria-live="polite"
-              >
-                <AlertCircle className="w-3 h-3" aria-hidden="true" />
-                This model requires an API key to be configured. Please check
-                your provider settings.
-              </p>
-            )}
+          <AgentModelPanel
+            agent={agent}
+            selectedModel={selectedModel}
+            currentConfig={currentConfig}
+            isModelAvailable={isModelAvailable}
+          />
+          <div className="flex items-center justify-end mt-3">
+            <AgentSettingsDropdown
+              agent={agent}
+              isSaving={isSaving}
+              onConfigure={() => setIsModalOpen(true)}
+            />
           </div>
 
           {/* Model Selection Modal */}

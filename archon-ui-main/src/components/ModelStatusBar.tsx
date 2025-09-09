@@ -128,6 +128,13 @@ export const ModelStatusBar: React.FC = () => {
     return [...agents, ...backendServices];
   }, [agents, backendServices]);
 
+  // Helper to look up the human‐friendly name (or fall back to the id)
+  const getServiceNameById = useCallback(
+    (serviceId: string) =>
+      allServices.find((s) => s.id === serviceId)?.name || serviceId,
+    [allServices]
+  );
+
   // Get service status icon
   const getServiceStatusIcon = () => {
     // Mock status - in real implementation, this would come from health checks
@@ -376,6 +383,7 @@ export const ModelStatusBar: React.FC = () => {
                     })
                     .slice(0, responsiveValues.maxModels)
                     .map(([service, model]) => {
+                      const serviceName = getServiceNameById(service);
                       return (
                         <div
                           key={service}
@@ -383,12 +391,8 @@ export const ModelStatusBar: React.FC = () => {
                           onClick={() => handleNavigate("/agents")}
                           role="button"
                           tabIndex={0}
-                          title={`${agentConfigs[service]?.name || service}: ${
-                            model.model_string
-                          }`}
-                          aria-label={`${
-                            agentConfigs[service]?.name || service
-                          } using ${model.model_string}`}
+                          title={`${serviceName}: ${model.model_string}`}
+                          aria-label={`${serviceName} using ${model.model_string}`}
                           onKeyDown={(e) => {
                             if (e.key === "Enter" || e.key === " ") {
                               e.preventDefault();
@@ -397,7 +401,7 @@ export const ModelStatusBar: React.FC = () => {
                           }}
                         >
                           <span className="text-[10px] text-gray-400 hidden sm:inline">
-                            {agentConfigs[service]?.name || service}:
+                            {serviceName}:
                           </span>
                           <div className="flex items-center gap-1">
                             <div
