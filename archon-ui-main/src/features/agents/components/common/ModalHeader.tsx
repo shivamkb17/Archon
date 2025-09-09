@@ -24,9 +24,11 @@ export const ModalHeader: React.FC<ModalHeaderProps> = ({
     >
       <h2 className="text-lg font-light text-white">{title}</h2>
       <button
+        type="button"
         onClick={onClose}
         className="text-gray-400 hover:text-white transition-colors"
         title="Close modal"
+        aria-label="Close modal"
       >
         <X className="w-5 h-5" />
       </button>
