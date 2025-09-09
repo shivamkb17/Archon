@@ -120,6 +120,8 @@ async def get_providers_metadata(
                     status_code=404, detail="No provider metadata found in database or OpenRouter")
             return metadata
 
+    except HTTPException as e:
+        raise e
     except Exception as e:
         logger.error(f"Failed to get providers metadata: {e}")
         raise HTTPException(
