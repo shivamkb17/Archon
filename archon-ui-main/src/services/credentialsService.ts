@@ -1,3 +1,5 @@
+import { toBool, toInt, toFloat } from '@/utils/typeConverters';
+
 export interface Credential {
   id?: string;
   key: string;
@@ -73,31 +75,31 @@ class CredentialsService {
       
       // Convert string values to appropriate types
       return {
-        USE_CONTEXTUAL_EMBEDDINGS: settings.USE_CONTEXTUAL_EMBEDDINGS === "true",
-        CONTEXTUAL_EMBEDDINGS_MAX_WORKERS: parseInt(settings.CONTEXTUAL_EMBEDDINGS_MAX_WORKERS) || 3,
-        USE_HYBRID_SEARCH: settings.USE_HYBRID_SEARCH === "true",
-        USE_AGENTIC_RAG: settings.USE_AGENTIC_RAG === "true",
-        USE_RERANKING: settings.USE_RERANKING === "true",
+        USE_CONTEXTUAL_EMBEDDINGS: toBool(settings.USE_CONTEXTUAL_EMBEDDINGS, false),
+        CONTEXTUAL_EMBEDDINGS_MAX_WORKERS: toInt(settings.CONTEXTUAL_EMBEDDINGS_MAX_WORKERS, 3),
+        USE_HYBRID_SEARCH: toBool(settings.USE_HYBRID_SEARCH, true),
+        USE_AGENTIC_RAG: toBool(settings.USE_AGENTIC_RAG, true),
+        USE_RERANKING: toBool(settings.USE_RERANKING, false),
         MODEL_CHOICE: settings.MODEL_CHOICE || "",
         LLM_PROVIDER: settings.LLM_PROVIDER || "",
         LLM_BASE_URL: settings.LLM_BASE_URL || "",
         EMBEDDING_MODEL: settings.EMBEDDING_MODEL || "",
         // Crawling Performance Settings
-        CRAWL_BATCH_SIZE: parseInt(settings.CRAWL_BATCH_SIZE) || 5,
-        CRAWL_MAX_CONCURRENT: parseInt(settings.CRAWL_MAX_CONCURRENT) || 3,
+        CRAWL_BATCH_SIZE: toInt(settings.CRAWL_BATCH_SIZE, 5),
+        CRAWL_MAX_CONCURRENT: toInt(settings.CRAWL_MAX_CONCURRENT, 3),
         CRAWL_WAIT_STRATEGY: settings.CRAWL_WAIT_STRATEGY || "adaptive",
-        CRAWL_PAGE_TIMEOUT: parseInt(settings.CRAWL_PAGE_TIMEOUT) || 30000,
-        CRAWL_DELAY_BEFORE_HTML: parseFloat(settings.CRAWL_DELAY_BEFORE_HTML) || 1,
+        CRAWL_PAGE_TIMEOUT: toInt(settings.CRAWL_PAGE_TIMEOUT, 30000),
+        CRAWL_DELAY_BEFORE_HTML: toFloat(settings.CRAWL_DELAY_BEFORE_HTML, 1),
         // Storage Performance Settings
-        DOCUMENT_STORAGE_BATCH_SIZE: parseInt(settings.DOCUMENT_STORAGE_BATCH_SIZE) || 50,
-        EMBEDDING_BATCH_SIZE: parseInt(settings.EMBEDDING_BATCH_SIZE) || 100,
-        DELETE_BATCH_SIZE: parseInt(settings.DELETE_BATCH_SIZE) || 50,
-        ENABLE_PARALLEL_BATCHES: settings.ENABLE_PARALLEL_BATCHES === "true",
+        DOCUMENT_STORAGE_BATCH_SIZE: toInt(settings.DOCUMENT_STORAGE_BATCH_SIZE, 50),
+        EMBEDDING_BATCH_SIZE: toInt(settings.EMBEDDING_BATCH_SIZE, 100),
+        DELETE_BATCH_SIZE: toInt(settings.DELETE_BATCH_SIZE, 50),
+        ENABLE_PARALLEL_BATCHES: toBool(settings.ENABLE_PARALLEL_BATCHES, true),
         // Advanced Settings
-        MEMORY_THRESHOLD_PERCENT: parseInt(settings.MEMORY_THRESHOLD_PERCENT) || 80,
-        DISPATCHER_CHECK_INTERVAL: parseInt(settings.DISPATCHER_CHECK_INTERVAL) || 5000,
-        CODE_EXTRACTION_BATCH_SIZE: parseInt(settings.CODE_EXTRACTION_BATCH_SIZE) || 10,
-        CODE_SUMMARY_MAX_WORKERS: parseInt(settings.CODE_SUMMARY_MAX_WORKERS) || 3,
+        MEMORY_THRESHOLD_PERCENT: toInt(settings.MEMORY_THRESHOLD_PERCENT, 80),
+        DISPATCHER_CHECK_INTERVAL: toInt(settings.DISPATCHER_CHECK_INTERVAL, 5000),
+        CODE_EXTRACTION_BATCH_SIZE: toInt(settings.CODE_EXTRACTION_BATCH_SIZE, 10),
+        CODE_SUMMARY_MAX_WORKERS: toInt(settings.CODE_SUMMARY_MAX_WORKERS, 3),
       };
     } catch (error) {
       console.error("Failed to fetch RAG settings:", error);
