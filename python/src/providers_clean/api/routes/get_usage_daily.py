@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from typing import Dict
 
 from ..deps import get_usage_service
 from ...services import UsageService
@@ -7,7 +8,7 @@ from ...services import UsageService
 router = APIRouter(prefix="/api/providers", tags=["providers"])
 
 
-@router.get("/usage/daily")
+@router.get("/usage/daily", response_model=Dict[str, float])
 async def get_daily_costs(
     days: int = 7,
     tracker: UsageService = Depends(get_usage_service)
