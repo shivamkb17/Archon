@@ -1,4 +1,4 @@
-import { toBool, toInt, toFloat } from '@/utils/typeConverters';
+import { toBool, toInt, toFloat } from "@/utils/typeConverters";
 
 export interface Credential {
   id?: string;
@@ -48,7 +48,7 @@ class CredentialsService {
   }
 
   async getCredential(
-    key: string,
+    key: string
   ): Promise<{ key: string; value?: string; is_encrypted?: boolean }> {
     try {
       // Get from app settings API
@@ -66,17 +66,25 @@ class CredentialsService {
 
   async getRagSettings(): Promise<RagSettings> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/app-settings/rag-strategy`);
+      const response = await fetch(
+        `${this.baseUrl}/api/app-settings/rag-strategy`
+      );
       if (!response.ok) {
         throw new Error(`Failed to fetch RAG settings: ${response.status}`);
       }
-      
+
       const settings = await response.json();
-      
+
       // Convert string values to appropriate types
       return {
-        USE_CONTEXTUAL_EMBEDDINGS: toBool(settings.USE_CONTEXTUAL_EMBEDDINGS, false),
-        CONTEXTUAL_EMBEDDINGS_MAX_WORKERS: toInt(settings.CONTEXTUAL_EMBEDDINGS_MAX_WORKERS, 3),
+        USE_CONTEXTUAL_EMBEDDINGS: toBool(
+          settings.USE_CONTEXTUAL_EMBEDDINGS,
+          false
+        ),
+        CONTEXTUAL_EMBEDDINGS_MAX_WORKERS: toInt(
+          settings.CONTEXTUAL_EMBEDDINGS_MAX_WORKERS,
+          3
+        ),
         USE_HYBRID_SEARCH: toBool(settings.USE_HYBRID_SEARCH, true),
         USE_AGENTIC_RAG: toBool(settings.USE_AGENTIC_RAG, true),
         USE_RERANKING: toBool(settings.USE_RERANKING, false),
@@ -91,14 +99,23 @@ class CredentialsService {
         CRAWL_PAGE_TIMEOUT: toInt(settings.CRAWL_PAGE_TIMEOUT, 30000),
         CRAWL_DELAY_BEFORE_HTML: toFloat(settings.CRAWL_DELAY_BEFORE_HTML, 1),
         // Storage Performance Settings
-        DOCUMENT_STORAGE_BATCH_SIZE: toInt(settings.DOCUMENT_STORAGE_BATCH_SIZE, 50),
+        DOCUMENT_STORAGE_BATCH_SIZE: toInt(
+          settings.DOCUMENT_STORAGE_BATCH_SIZE,
+          50
+        ),
         EMBEDDING_BATCH_SIZE: toInt(settings.EMBEDDING_BATCH_SIZE, 100),
         DELETE_BATCH_SIZE: toInt(settings.DELETE_BATCH_SIZE, 50),
         ENABLE_PARALLEL_BATCHES: toBool(settings.ENABLE_PARALLEL_BATCHES, true),
         // Advanced Settings
         MEMORY_THRESHOLD_PERCENT: toInt(settings.MEMORY_THRESHOLD_PERCENT, 80),
-        DISPATCHER_CHECK_INTERVAL: toInt(settings.DISPATCHER_CHECK_INTERVAL, 5000),
-        CODE_EXTRACTION_BATCH_SIZE: toInt(settings.CODE_EXTRACTION_BATCH_SIZE, 10),
+        DISPATCHER_CHECK_INTERVAL: toInt(
+          settings.DISPATCHER_CHECK_INTERVAL,
+          5000
+        ),
+        CODE_EXTRACTION_BATCH_SIZE: toInt(
+          settings.CODE_EXTRACTION_BATCH_SIZE,
+          10
+        ),
         CODE_SUMMARY_MAX_WORKERS: toInt(settings.CODE_SUMMARY_MAX_WORKERS, 3),
       };
     } catch (error) {
@@ -138,8 +155,10 @@ class CredentialsService {
   }
 
   async getCredentialsByCategory(category: string): Promise<Credential[]> {
-    console.warn(`getCredentialsByCategory(${category}) is deprecated - use provider_clean API or app-settings`);
-    
+    console.warn(
+      `getCredentialsByCategory(${category}) is deprecated - use provider_clean API or app-settings`
+    );
+
     if (category === "rag_strategy") {
       try {
         const settings = await this.getRagSettings();
@@ -148,14 +167,14 @@ class CredentialsService {
           key,
           value: String(value),
           is_encrypted: false,
-          category: "rag_strategy"
+          category: "rag_strategy",
         }));
       } catch (error) {
         console.warn(`Failed to fetch rag_strategy settings:`, error);
         return [];
       }
     }
-    
+
     return [];
   }
 
@@ -180,7 +199,7 @@ class CredentialsService {
       // Update each setting individually
       const updates = Object.entries(settings).map(([key, value]) =>
         fetch(`${this.baseUrl}/api/app-settings/${key}`, {
-          method: "POST", 
+          method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
@@ -189,7 +208,7 @@ class CredentialsService {
       );
 
       const results = await Promise.all(updates);
-      return results.every(r => r.ok);
+      return results.every((r) => r.ok);
     } catch (error) {
       console.error("Failed to update RAG settings:", error);
       return false;

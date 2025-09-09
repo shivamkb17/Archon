@@ -26,7 +26,8 @@ export const toBool = (v: unknown, fallback: boolean): boolean => {
  * @returns The integer value or fallback
  */
 export const toInt = (v: unknown, fallback: number): number => {
-  const n = typeof v === "number" ? Math.trunc(v) : Number.parseInt(String(v), 10);
+  const n =
+    typeof v === "number" ? Math.trunc(v) : Number.parseInt(String(v), 10);
   return Number.isFinite(n) ? n : fallback;
 };
 
