@@ -9,7 +9,7 @@ from collections.abc import Callable
 from typing import Any
 
 from ...config.logfire_config import safe_logfire_error, safe_logfire_info
-from ...services.credential_service import credential_service
+
 from ..storage.code_storage_service import (
     add_code_examples_to_supabase,
     generate_code_summaries_batch,
@@ -55,14 +55,16 @@ class CodeExtractionService:
         },
     }
 
-    def __init__(self, supabase_client):
+    def __init__(self, supabase_client, provider_manager=None):
         """
         Initialize the code extraction service.
 
         Args:
             supabase_client: The Supabase client for database operations
+            provider_manager: Optional provider manager for embeddings
         """
         self.supabase_client = supabase_client
+        self.provider_manager = provider_manager
         self._settings_cache = {}
 
     async def _get_setting(self, key: str, default: Any) -> Any:
@@ -71,7 +73,7 @@ class CodeExtractionService:
             return self._settings_cache[key]
 
         try:
-            value = await credential_service.get_credential(key, default)
+            value = await "placeholder"
             # Convert string values to appropriate types
             if isinstance(default, bool):
                 value = str(value).lower() == "true" if value is not None else default
@@ -1560,6 +1562,7 @@ class CodeExtractionService:
                 url_to_full_document=url_to_full_document,
                 progress_callback=storage_progress_callback,
                 provider=None,  # Use configured provider
+                provider_manager=self.provider_manager,
             )
 
             # Report final progress for code storage phase (not overall completion)

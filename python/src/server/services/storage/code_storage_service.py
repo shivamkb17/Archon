@@ -18,23 +18,19 @@ from supabase import Client
 from ...config.logfire_config import search_logger
 from ..embeddings.contextual_embedding_service import generate_contextual_embeddings_batch
 from ..embeddings.embedding_service import create_embeddings_batch
+from ..llm_provider_service import get_llm_client, get_llm_model
 
 
-def _get_model_choice() -> str:
-    """Get MODEL_CHOICE with direct fallback."""
+async def _get_model_choice(provider: str | None = None) -> str:
+    """Get model choice from provider integration."""
     try:
-        # Direct cache/env fallback
-        from ..credential_service import credential_service
-
-        if credential_service._cache_initialized and "MODEL_CHOICE" in credential_service._cache:
-            model = credential_service._cache["MODEL_CHOICE"]
-        else:
-            model = os.getenv("MODEL_CHOICE", "gpt-4.1-nano")
-        search_logger.debug(f"Using model choice: {model}")
-        return model
+        return await get_llm_model(provider, service="code_analysis")
     except Exception as e:
         search_logger.warning(f"Error getting model choice: {e}, using default")
-        return "gpt-4.1-nano"
+        # Fall back to environment or default
+        model = os.getenv("MODEL_CHOICE", "gpt-4o-mini")
+        search_logger.debug(f"Using model choice: {model}")
+        return model
 
 
 def _get_max_workers() -> int:
@@ -167,11 +163,7 @@ def extract_code_blocks(markdown_content: str, min_length: int = None) -> list[d
     """
     # Load all code extraction settings with direct fallback
     try:
-        from ...services.credential_service import credential_service
-
         def _get_setting_fallback(key: str, default: str) -> str:
-            if credential_service._cache_initialized and key in credential_service._cache:
-                return credential_service._cache[key]
             return os.getenv(key, default)
 
         # Get all relevant settings with defaults
@@ -489,8 +481,8 @@ def extract_code_blocks(markdown_content: str, min_length: int = None) -> list[d
     return grouped_blocks
 
 
-def generate_code_example_summary(
-    code: str, context_before: str, context_after: str, language: str = "", provider: str = None
+async def generate_code_example_summary(
+    code: str, context_before: str, context_after: str, language: str = "", provider: str | None = None
 ) -> dict[str, str]:
     """
     Generate a summary and name for a code example using its surrounding context.
@@ -505,8 +497,8 @@ def generate_code_example_summary(
     Returns:
         A dictionary with 'summary' and 'example_name'
     """
-    # Get model choice from credential service (RAG setting)
-    model_choice = _get_model_choice()
+    # Get model choice from provider integration
+    model_choice = await _get_model_choice(provider)
 
     # Create the prompt
     prompt = f"""<context_before>
@@ -535,57 +527,23 @@ Format your response as JSON:
 """
 
     try:
-        # Get LLM client using fallback
-        try:
-            import os
-
-            import openai
-
-            api_key = os.getenv("OPENAI_API_KEY")
-            if not api_key:
-                # Try to get from credential service with direct fallback
-                from ..credential_service import credential_service
-
-                if (
-                    credential_service._cache_initialized
-                    and "OPENAI_API_KEY" in credential_service._cache
-                ):
-                    cached_key = credential_service._cache["OPENAI_API_KEY"]
-                    if isinstance(cached_key, dict) and cached_key.get("is_encrypted"):
-                        api_key = credential_service._decrypt_value(cached_key["encrypted_value"])
-                    else:
-                        api_key = cached_key
-                else:
-                    api_key = os.getenv("OPENAI_API_KEY", "")
-
-            if not api_key:
-                raise ValueError("No OpenAI API key available")
-
-            client = openai.OpenAI(api_key=api_key)
-        except Exception as e:
-            search_logger.error(
-                f"Failed to create LLM client fallback: {e} - returning default values"
+        # Use provider integration for LLM client
+        async with get_llm_client(provider=provider) as client:
+            search_logger.debug(
+                f"Calling API with model: {model_choice}, language: {language}, code length: {len(code)}"
             )
-            return {
-                "example_name": f"Code Example{f' ({language})' if language else ''}",
-                "summary": "Code example for demonstration purposes.",
-            }
 
-        search_logger.debug(
-            f"Calling OpenAI API with model: {model_choice}, language: {language}, code length: {len(code)}"
-        )
-
-        response = client.chat.completions.create(
-            model=model_choice,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a helpful assistant that analyzes code examples and provides JSON responses with example names and summaries.",
-                },
-                {"role": "user", "content": prompt},
-            ],
-            response_format={"type": "json_object"},
-        )
+            response = await client.chat.completions.create(
+                model=model_choice,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a helpful assistant that analyzes code examples and provides JSON responses with example names and summaries.",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                response_format={"type": "json_object"},
+            )
 
         response_content = response.choices[0].message.content.strip()
         search_logger.debug(f"OpenAI API response: {repr(response_content[:200])}...")
@@ -644,15 +602,7 @@ async def generate_code_summaries_batch(
     # Get max_workers from settings if not provided
     if max_workers is None:
         try:
-            from ...services.credential_service import credential_service
-
-            if (
-                credential_service._cache_initialized
-                and "CODE_SUMMARY_MAX_WORKERS" in credential_service._cache
-            ):
-                max_workers = int(credential_service._cache["CODE_SUMMARY_MAX_WORKERS"])
-            else:
-                max_workers = int(os.getenv("CODE_SUMMARY_MAX_WORKERS", "3"))
+            max_workers = int(os.getenv("CODE_SUMMARY_MAX_WORKERS", "3"))
         except:
             max_workers = 3  # Default fallback
 
@@ -748,6 +698,7 @@ async def add_code_examples_to_supabase(
     url_to_full_document: dict[str, str] | None = None,
     progress_callback: Callable | None = None,
     provider: str | None = None,
+    provider_manager: Any | None = None,
 ):
     """
     Add code examples to the Supabase code_examples table in batches.
@@ -775,32 +726,10 @@ async def add_code_examples_to_supabase(
             search_logger.error(f"Error deleting existing code examples for {url}: {e}")
 
     # Check if contextual embeddings are enabled
-    try:
-        from ..credential_service import credential_service
-
-        use_contextual_embeddings = credential_service._cache.get("USE_CONTEXTUAL_EMBEDDINGS")
-        if isinstance(use_contextual_embeddings, str):
-            use_contextual_embeddings = use_contextual_embeddings.lower() == "true"
-        elif isinstance(use_contextual_embeddings, dict) and use_contextual_embeddings.get(
-            "is_encrypted"
-        ):
-            # Handle encrypted value
-            encrypted_value = use_contextual_embeddings.get("encrypted_value")
-            if encrypted_value:
-                try:
-                    decrypted = credential_service._decrypt_value(encrypted_value)
-                    use_contextual_embeddings = decrypted.lower() == "true"
-                except:
-                    use_contextual_embeddings = False
-            else:
-                use_contextual_embeddings = False
-        else:
-            use_contextual_embeddings = bool(use_contextual_embeddings)
-    except:
-        # Fallback to environment variable
-        use_contextual_embeddings = (
-            os.getenv("USE_CONTEXTUAL_EMBEDDINGS", "false").lower() == "true"
-        )
+    # Use environment variable for now (can be moved to provider clean later)
+    use_contextual_embeddings = (
+        os.getenv("USE_CONTEXTUAL_EMBEDDINGS", "false").lower() == "true"
+    )
 
     search_logger.info(
         f"Using contextual embeddings for code examples: {use_contextual_embeddings}"
@@ -851,7 +780,12 @@ async def add_code_examples_to_supabase(
             batch_texts = combined_texts
 
         # Create embeddings for the batch
-        result = await create_embeddings_batch(batch_texts, provider=provider)
+        result = await create_embeddings_batch(
+            batch_texts, 
+            provider=provider,
+            provider_manager=provider_manager,
+            use_new_provider_manager=provider_manager is not None
+        )
 
         # Log any failures
         if result.has_failures:

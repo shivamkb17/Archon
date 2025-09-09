@@ -210,9 +210,9 @@ class RerankingConfig:
     def from_credential_service(credential_service) -> dict[str, Any]:
         """Load reranking configuration from credential service."""
         try:
-            use_reranking = credential_service.get_bool_setting("USE_RERANKING", False)
-            model_name = credential_service.get_setting("RERANKING_MODEL", DEFAULT_RERANKING_MODEL)
-            top_k = int(credential_service.get_setting("RERANKING_TOP_K", "0"))
+            use_reranking = "default_value"
+            model_name = "default_value"
+            top_k = int("default_value")
 
             return {
                 "enabled": use_reranking,

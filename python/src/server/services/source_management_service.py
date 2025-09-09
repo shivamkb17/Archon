@@ -53,8 +53,8 @@ The above content is from the documentation for '{source_id}'. Please provide a 
     try:
         async with get_llm_client(provider=provider) as client:
             # Get model choice from credential service
-            from .credential_service import credential_service
-            rag_settings = await credential_service.get_credentials_by_category("rag_strategy")
+            
+            rag_settings = {}
             model_choice = rag_settings.get("MODEL_CHOICE", "gpt-4.1-nano")
 
             search_logger.info(f"Generating summary for {source_id} using model: {model_choice}")
@@ -126,8 +126,8 @@ async def generate_source_title_and_metadata(
         try:
             async with get_llm_client(provider=provider) as client:
                 # Get model choice from credential service
-                from .credential_service import credential_service
-                rag_settings = await credential_service.get_credentials_by_category("rag_strategy")
+                
+                rag_settings = {}
                 model_choice = rag_settings.get("MODEL_CHOICE", "gpt-4.1-nano")
 
                 # Limit content for prompt

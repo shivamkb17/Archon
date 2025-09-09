@@ -10,7 +10,7 @@ from typing import Any
 from crawl4ai import CacheMode, CrawlerRunConfig, MemoryAdaptiveDispatcher
 
 from ....config.logfire_config import get_logger
-from ...credential_service import credential_service
+
 
 logger = get_logger(__name__)
 
@@ -63,7 +63,7 @@ class BatchCrawlStrategy:
 
         # Load settings from database - fail fast on configuration errors
         try:
-            settings = await credential_service.get_credentials_by_category("rag_strategy")
+            settings = {}
             batch_size = int(settings.get("CRAWL_BATCH_SIZE", "50"))
             if max_concurrent is None:
                 # CRAWL_MAX_CONCURRENT: Pages to crawl in parallel within this single crawl operation

@@ -4,6 +4,7 @@ import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { credentialsService, Credential } from '../../services/credentialsService';
+import { cleanProviderService } from '../../services/cleanProviderService';
 import { useToast } from '../../contexts/ToastContext';
 
 interface CustomCredential {
@@ -23,13 +24,27 @@ export const APIKeysSection = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [providers, setProviders] = useState<string[] | null>(null);
+  const [providersLoading, setProvidersLoading] = useState(true);
+  const [providerKey, setProviderKey] = useState('');
+  const [selectedProvider, setSelectedProvider] = useState<string>('');
+  const [attemptedBootstrap, setAttemptedBootstrap] = useState(false);
 
   const { showToast } = useToast();
 
   // Load credentials on mount
   useEffect(() => {
     loadCredentials();
+    loadProviders();
   }, []);
+
+  // Auto-bootstrap providers once if list is empty after initial load
+  useEffect(() => {
+    if (!providersLoading && providers && providers.length === 0 && !attemptedBootstrap) {
+      setAttemptedBootstrap(true);
+      handleBootstrap();
+    }
+  }, [providersLoading, providers, attemptedBootstrap]);
 
   // Track unsaved changes
   useEffect(() => {
@@ -69,6 +84,48 @@ export const APIKeysSection = () => {
       showToast('Failed to load credentials', 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadProviders = async () => {
+    try {
+      setProvidersLoading(true);
+      const list = await cleanProviderService.getProviders();
+      setProviders(list);
+      if (list.length > 0 && !selectedProvider) setSelectedProvider(list[0]);
+    } catch (err: any) {
+      // If 404, providers table is empty
+      setProviders([]);
+    } finally {
+      setProvidersLoading(false);
+    }
+  };
+
+  const handleBootstrap = async () => {
+    try {
+      await cleanProviderService.bootstrap(true);
+      showToast('Bootstrap started. Syncing providers...', 'success');
+      await loadProviders();
+    } catch (err) {
+      console.error('Bootstrap failed', err);
+      showToast('Bootstrap failed', 'error');
+    }
+  };
+
+  const handleSetProviderKey = async () => {
+    if (!selectedProvider || !providerKey) {
+      showToast('Select a provider and enter an API key', 'error');
+      return;
+    }
+    try {
+      await cleanProviderService.setApiKey(selectedProvider as any, providerKey);
+      showToast(`API key saved for ${selectedProvider}. Syncing models...`, 'success');
+      setProviderKey('');
+      // Refresh providers list after saving key
+      await loadProviders();
+    } catch (err) {
+      console.error('Failed to set provider key', err);
+      showToast('Failed to set provider key', 'error');
     }
   };
 
@@ -202,7 +259,47 @@ export const APIKeysSection = () => {
 
   return (
     <Card accentColor="pink" className="p-8">
-        <div className="space-y-4">
+        <div className="space-y-6">
+          {/* Providers quick add */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Providers</h3>
+              {providersLoading ? (
+                <span className="text-xs text-gray-500">Loading…</span>
+              ) : providers && providers.length === 0 ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500">No providers found</span>
+                  <Button size="sm" onClick={handleBootstrap}>Bootstrap Providers</Button>
+                </div>
+              ) : null}
+            </div>
+            {/* Info text while first-time bootstrap runs */}
+            {!providersLoading && providers && providers.length === 0 && attemptedBootstrap && (
+              <div className="text-xs text-gray-500">Bootstrapping providers…</div>
+            )}
+            {providers && providers.length > 0 && (
+              <div className="flex gap-2 items-center">
+                <select
+                  value={selectedProvider}
+                  onChange={(e) => setSelectedProvider(e.target.value)}
+                  className="px-3 py-2 rounded-md bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-sm"
+                >
+                  {providers.map((p) => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
+                <input
+                  type="password"
+                  placeholder="Enter API key"
+                  value={providerKey}
+                  onChange={(e) => setProviderKey(e.target.value)}
+                  className="flex-1 px-3 py-2 rounded-md bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-sm"
+                />
+                <Button onClick={handleSetProviderKey}>Save Key</Button>
+              </div>
+            )}
+          </div>
+
           {/* Description text */}
           <p className="text-sm text-gray-600 dark:text-zinc-400 mb-4">
             Manage your API keys and credentials for various services used by Archon.

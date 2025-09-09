@@ -133,12 +133,24 @@ async def get_mcp_config():
 
             # Get only model choice from database (simplified)
             try:
-                from ..services.credential_service import credential_service
+                
 
                 model_choice = await credential_service.get_credential(
                     "MODEL_CHOICE", "gpt-4o-mini"
                 )
                 config["model_choice"] = model_choice
+                config["use_contextual_embeddings"] = (
+                    os.getenv("placeholder", "false")
+                ).lower() == "true"
+                config["use_hybrid_search"] = (
+                    os.getenv("placeholder", "false")
+                ).lower() == "true"
+                config["use_agentic_rag"] = (
+                    os.getenv("placeholder", "false")
+                ).lower() == "true"
+                config["use_reranking"] = (
+                    os.getenv("placeholder", "false")
+                ).lower() == "true"
             except Exception:
                 # Fallback to default model
                 config["model_choice"] = "gpt-4o-mini"
@@ -156,11 +168,55 @@ async def get_mcp_config():
             raise HTTPException(status_code=500, detail={"error": str(e)})
 
 
-@router.get("/clients")
-async def get_mcp_clients():
-    """Get connected MCP clients with type detection."""
-    with safe_span("api_mcp_clients") as span:
-        safe_set_attribute(span, "endpoint", "/api/mcp/clients")
+@router.post("/config")
+async def save_configuration(config: ServerConfig):
+    """Save MCP server configuration."""
+    with safe_span("api_save_mcp_config") as span:
+        safe_set_attribute(span, "endpoint", "/api/mcp/config")
+        safe_set_attribute(span, "method", "POST")
+        safe_set_attribute(span, "transport", config.transport)
+        safe_set_attribute(span, "host", config.host)
+        safe_set_attribute(span, "port", config.port)
+
+        try:
+            api_logger.info(
+                f"Saving MCP server configuration | transport={config.transport} | host={config.host} | port={config.port}"
+            )
+            supabase_client = get_supabase_client()
+
+            config_json = config.model_dump_json()
+
+            # Save MCP config using credential service
+            
+
+            success = await credential_service.set_credential(
+                "mcp_config",
+                config_json,
+                category="mcp",
+                description="MCP server configuration settings",
+            )
+
+            if success:
+                api_logger.info("MCP configuration saved successfully")
+                safe_set_attribute(span, "operation", "save")
+            else:
+                raise Exception("Failed to save MCP configuration")
+
+            safe_set_attribute(span, "success", True)
+            return {"success": True, "message": "Configuration saved"}
+
+        except Exception as e:
+            api_logger.error(f"Failed to save MCP configuration | error={str(e)}")
+            safe_set_attribute(span, "error", str(e))
+            raise HTTPException(status_code=500, detail={"error": str(e)})
+
+
+
+@router.get("/tools")
+async def get_mcp_tools():
+    """Get available MCP tools by querying the running MCP server's registered tools."""
+    with safe_span("api_get_mcp_tools") as span:
+        safe_set_attribute(span, "endpoint", "/api/mcp/tools")
         safe_set_attribute(span, "method", "GET")
 
         try:

@@ -144,8 +144,8 @@ class ProjectCreationService:
         """
         try:
             # Check if LLM provider is configured
-            from ..credential_service import credential_service
-            provider_config = await credential_service.get_active_provider("llm")
+            
+            provider_config = {}
 
             if not provider_config:
                 # No LLM provider configured, skip AI documentation

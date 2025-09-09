@@ -9,10 +9,11 @@ import os
 from dataclasses import dataclass, field
 from typing import Any
 
+import httpx
 import openai
 
 from ...config.logfire_config import safe_span, search_logger
-from ..credential_service import credential_service
+
 from ..llm_provider_service import get_embedding_model, get_llm_client
 from ..threading_service import get_threading_service
 from .embedding_exceptions import (
@@ -144,7 +145,7 @@ async def create_embeddings_batch(
     Args:
         texts: List of texts to create embeddings for
         progress_callback: Optional callback for progress reporting
-        provider: Optional provider override
+        provider: Optional provider override (currently unused - uses provider_clean config)
 
     Returns:
         EmbeddingBatchResult with successful embeddings and failure details
@@ -179,18 +180,24 @@ async def create_embeddings_batch(
         "create_embeddings_batch", text_count=len(texts), total_chars=sum(len(t) for t in texts)
     ) as span:
         try:
-            async with get_llm_client(provider=provider, use_embedding_provider=True) as client:
-                # Load batch size and dimensions from settings
-                try:
-                    rag_settings = await credential_service.get_credentials_by_category(
-                        "rag_strategy"
-                    )
-                    batch_size = int(rag_settings.get("EMBEDDING_BATCH_SIZE", "100"))
-                    embedding_dimensions = int(rag_settings.get("EMBEDDING_DIMENSIONS", "1536"))
-                except Exception as e:
-                    search_logger.warning(f"Failed to load embedding settings: {e}, using defaults")
-                    batch_size = 100
-                    embedding_dimensions = 1536
+            # Use updated LLM provider service that now uses provider_clean
+            async with get_llm_client(use_embedding_provider=True) as client:
+                # Get embedding model from provider_clean system  
+                model = await get_embedding_model()
+                # Get provider-specific optimization settings from database
+                from ..provider_optimization_service import ProviderOptimizationService
+                
+                optimization = await ProviderOptimizationService.get_provider_optimization("embedding")
+                
+                provider = optimization["provider"]
+                embedding_dimensions = optimization["embedding_dimensions"]
+                batch_size = optimization["batch_size"]
+                supports_dimensions = optimization["supports_dimensions"]
+                
+                search_logger.info(
+                    f"Using provider {provider}: {embedding_dimensions} dimensions, "
+                    f"batch_size={batch_size}, supports_dimensions={supports_dimensions}"
+                )
 
                 total_tokens_used = 0
 
@@ -219,13 +226,19 @@ async def create_embeddings_batch(
 
                             while retry_count < max_retries:
                                 try:
-                                    # Create embeddings for this batch
-                                    embedding_model = await get_embedding_model(provider=provider)
-                                    response = await client.embeddings.create(
-                                        model=embedding_model,
-                                        input=batch,
-                                        dimensions=embedding_dimensions,
-                                    )
+                                    # Create embeddings using provider-aware API call
+                                    if supports_dimensions and embedding_dimensions is not None:
+                                        response = await client.embeddings.create(
+                                            model=model,
+                                            input=batch,
+                                            dimensions=embedding_dimensions,
+                                        )
+                                    else:
+                                        # Provider doesn't support dimensions param or dimensions not specified
+                                        response = await client.embeddings.create(
+                                            model=model,
+                                            input=batch,
+                                        )
 
                                     # Add successful embeddings
                                     for text, item in zip(batch, response.data, strict=False):
@@ -251,7 +264,7 @@ async def create_embeddings_batch(
                                             result.add_failure(
                                                 text,
                                                 EmbeddingQuotaExhaustedError(
-                                                    "OpenAI quota exhausted",
+                                                    "API quota exhausted",
                                                     tokens_used=tokens_so_far,
                                                 ),
                                                 batch_index,

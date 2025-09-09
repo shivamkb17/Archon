@@ -27,8 +27,15 @@ from .api_routes.mcp_api import router as mcp_router
 from .api_routes.progress_api import router as progress_router
 from .api_routes.projects_api import router as projects_router
 
+# Import clean provider routes
+try:
+    from ..providers_clean.api.provider_routes import router as providers_router
+except ImportError:
+    providers_router = None
+
 # Import modular API routers
 from .api_routes.settings_api import router as settings_router
+from .api_routes.app_settings_api import router as app_settings_router
 
 # Import Logfire configuration
 from .config.logfire_config import api_logger, setup_logfire
@@ -36,7 +43,7 @@ from .services.background_task_manager import cleanup_task_manager
 from .services.crawler_manager import cleanup_crawler, initialize_crawler
 
 # Import utilities and core classes
-from .services.credential_service import initialize_credentials
+# Provider clean system handles all configuration
 
 # Import missing dependencies that the modular APIs need
 try:
@@ -75,17 +82,59 @@ async def lifespan(app: FastAPI):
         from .config.config import get_config
 
         get_config()  # This will raise ConfigurationError if anon key detected
+        
+        # Validate required environment variables for provider_clean system
+        required_env_vars = ['ENCRYPTION_KEY']
+        missing_vars = [var for var in required_env_vars if not os.getenv(var)]
+        if missing_vars:
+            raise ValueError(
+                f"Required environment variables missing: {missing_vars}. "
+                f"ENCRYPTION_KEY is required for API key decryption in provider_clean system."
+            )
 
-        # Initialize credentials from database FIRST - this is the foundation for everything else
-        await initialize_credentials()
-
-        # Now that credentials are loaded, we can properly initialize logging
-        # This must happen AFTER credentials so LOGFIRE_ENABLED is set from database
+        # Initialize logging first
         setup_logfire(service_name="archon-backend")
-
+        
         # Now we can safely use the logger
-        logger.info("✅ Credentials initialized")
+        logger.info("✅ Provider clean system ready")
         api_logger.info("🔥 Logfire initialized for backend")
+        
+        # Initialize provider clean services
+        try:
+            from ..providers_clean.infrastructure.dependencies import (
+                get_supabase_client,
+                get_encryption_cipher,
+            )
+            from ..providers_clean.services import APIKeyService, ServiceRegistryService
+            from ..providers_clean.infrastructure.unit_of_work.supabase_uow import SupabaseUnitOfWork
+            
+            # Get supabase client for provider clean
+            supabase_client = get_supabase_client()
+            if supabase_client:
+                # Initialize provider clean services
+                # Use a single stable cipher derived from ENCRYPTION_KEY
+                cipher = get_encryption_cipher()
+                uow = SupabaseUnitOfWork(supabase_client, cipher)
+                api_key_service = APIKeyService(uow)
+                service_registry = ServiceRegistryService(uow)
+                
+                # Store services in app state
+                app.state.api_key_service = api_key_service
+                app.state.service_registry = service_registry
+                app.state.supabase_client = supabase_client
+                
+                logger.info("✅ Provider clean services initialized successfully")
+            else:
+                logger.warning("⚠️ Supabase client not available for provider clean")
+                app.state.api_key_service = None
+                app.state.service_registry = None
+                app.state.supabase_client = None
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize provider clean services: {e}", exc_info=True)
+            app.state.api_key_service = None
+            app.state.service_registry = None
+            app.state.supabase_client = None
+        
 
         # Initialize crawling context
         try:
@@ -193,7 +242,11 @@ async def skip_health_check_logs(request, call_next):
 
 
 # Include API routers
+# Include provider routes if available
+if providers_router:
+    app.include_router(providers_router)
 app.include_router(settings_router)
+app.include_router(app_settings_router)
 app.include_router(mcp_router)
 # app.include_router(mcp_client_router)  # Removed - not part of new architecture
 app.include_router(knowledge_router)
