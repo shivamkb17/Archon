@@ -7,7 +7,7 @@ import {
   Code,
   FileText,
   Brain,
-  BoxIcon,
+  Box as BoxIcon,
   Globe,
   ChevronRight,
   Pencil,
