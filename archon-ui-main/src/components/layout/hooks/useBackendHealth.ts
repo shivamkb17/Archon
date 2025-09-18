@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { callAPIWithETag } from "../../../features/projects/shared/apiWithEtag";
+import { callAPIWithETag } from "../../../features/shared/apiWithEtag";
 import type { HealthResponse } from "../types";
 
 /**
@@ -13,10 +13,10 @@ export function useBackendHealth() {
       // Use existing ETag infrastructure with timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
-      
+
       // Chain signals: React Query's signal + our timeout
       if (signal) {
-        signal.addEventListener('abort', () => controller.abort());
+        signal.addEventListener("abort", () => controller.abort());
       }
 
       return callAPIWithETag<HealthResponse>("/api/health", {
