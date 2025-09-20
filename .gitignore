@@ -4,9 +4,12 @@ __pycache__
 .claude/settings.local.json
 PRPs/local
 PRPs/completed/
+PRPs/stories/
 /logs/
 .zed
 tmp/
 temp/
 .DS_Store
 UAT/
+
+.DS_Store

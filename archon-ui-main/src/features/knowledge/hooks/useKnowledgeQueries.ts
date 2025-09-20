@@ -4,7 +4,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { createOptimisticEntity, createOptimisticId } from "@/features/shared/optimistic";
 import { useActiveOperations } from "../../progress/hooks";
 import { progressKeys } from "../../progress/hooks/useProgressQueries";
@@ -65,7 +65,6 @@ export function useKnowledgeItemChunks(
   sourceId: string | null,
   opts?: { domain?: string; limit?: number; offset?: number },
 ) {
-  // TODO: Phase 4 - Add explicit typing: useQuery<DocumentChunk[]> or appropriate return type
   // See PRPs/local/frontend-state-management-refactor.md Phase 4: Configure Request Deduplication
   return useQuery({
     queryKey: sourceId ? knowledgeKeys.chunks(sourceId, opts) : DISABLED_QUERY_KEY,
@@ -116,21 +115,29 @@ export function useCrawlUrl() {
   >({
     mutationFn: (request: CrawlRequest) => knowledgeService.crawlUrl(request),
     onMutate: async (request) => {
-      // TODO: Phase 3 - Fix optimistic updates writing to wrong cache
-      // knowledgeKeys.lists() is never queried - actual data comes from knowledgeKeys.summaries(filter)
-      // This makes all optimistic updates invisible. Should either:
-      // 1. Remove optimistic updates for knowledge items
-      // 2. Update all summary caches with optimistic data
-      // 3. Create a real query that uses lists()
-      // See: PRPs/local/frontend-state-management-refactor.md Phase 3
-
       // Cancel any outgoing refetches to prevent race conditions
-      await queryClient.cancelQueries({ queryKey: knowledgeKeys.lists() });
       await queryClient.cancelQueries({ queryKey: knowledgeKeys.summariesPrefix() });
       await queryClient.cancelQueries({ queryKey: progressKeys.active() });
 
+      // TODO: Fix invisible optimistic updates
+      // ISSUE: Optimistic updates are applied to knowledgeKeys.summaries(filter) queries,
+      // but the UI component (KnowledgeView) queries with dynamic filters that we don't have access to here.
+      // This means optimistic updates only work if the filter happens to match what's being viewed.
+      //
+      // CURRENT BEHAVIOR:
+      // - We update all cached summaries queries (lines 158-179 below)
+      // - BUT if the user changes filters after mutation starts, they won't see the optimistic update
+      // - AND we have no way to know what filter the user is currently viewing
+      //
+      // PROPER FIX requires one of:
+      // 1. Pass current filter from KnowledgeView to mutation hooks (prop drilling)
+      // 2. Create KnowledgeFilterContext to share filter state
+      // 3. Restructure to have a single source of truth query key like other features
+      //
+      // IMPACT: Users don't see immediate feedback when adding knowledge items - items only
+      // appear after the server responds (usually 1-3 seconds later)
+
       // Snapshot the previous values for rollback
-      const previousKnowledge = queryClient.getQueryData<KnowledgeItem[]>(knowledgeKeys.lists());
       const previousSummaries = queryClient.getQueriesData<KnowledgeItemsResponse>({
         queryKey: knowledgeKeys.summariesPrefix(),
       });
@@ -165,14 +172,7 @@ export function useCrawlUrl() {
       } as Omit<KnowledgeItem, "id">);
       const tempItemId = optimisticItem.id;
 
-      // Add optimistic knowledge item to the list
-      queryClient.setQueryData<KnowledgeItem[]>(knowledgeKeys.lists(), (old) => {
-        if (!old) return [optimisticItem];
-        // Add at the beginning for visibility
-        return [optimisticItem, ...old];
-      });
-
-      // Respect each cache's filter (knowledge_type, tags, etc.)
+      // Update all summaries caches with optimistic data, respecting each cache's filter
       const entries = queryClient.getQueriesData<KnowledgeItemsResponse>({
         queryKey: knowledgeKeys.summariesPrefix(),
       });
@@ -229,28 +229,12 @@ export function useCrawlUrl() {
       });
 
       // Return context for rollback and replacement
-      return { previousKnowledge, previousSummaries, previousOperations, tempProgressId, tempItemId };
+      return { previousSummaries, previousOperations, tempProgressId, tempItemId };
     },
     onSuccess: (response, _variables, context) => {
       // Replace temporary IDs with real ones from the server
       if (context) {
-        // Update knowledge item with real source_id if we get it
-        queryClient.setQueryData<KnowledgeItem[]>(knowledgeKeys.lists(), (old) => {
-          if (!old) return old;
-          return old.map((item) => {
-            if (item.id === context.tempItemId) {
-              // Update with real progress ID, but keep the optimistic item
-              // The real item will come through polling/invalidation
-              return {
-                ...item,
-                source_id: response.progressId,
-              };
-            }
-            return item;
-          });
-        });
-
-        // Also update summaries cache with real progress ID
+        // Update summaries cache with real progress ID
         queryClient.setQueriesData<KnowledgeItemsResponse>({ queryKey: knowledgeKeys.summariesPrefix() }, (old) => {
           if (!old) return old;
           return {
@@ -289,7 +273,6 @@ export function useCrawlUrl() {
       }
 
       // Invalidate to get fresh data
-      queryClient.invalidateQueries({ queryKey: knowledgeKeys.lists() });
       queryClient.invalidateQueries({ queryKey: progressKeys.active() });
 
       showToast(`Crawl started: ${response.message}`, "success");
@@ -299,9 +282,6 @@ export function useCrawlUrl() {
     },
     onError: (error, _variables, context) => {
       // Rollback optimistic updates on error
-      if (context?.previousKnowledge) {
-        queryClient.setQueryData(knowledgeKeys.lists(), context.previousKnowledge);
-      }
       if (context?.previousSummaries) {
         // Rollback all summary queries
         for (const [queryKey, data] of context.previousSummaries) {
@@ -473,12 +453,9 @@ export function useUploadDocument() {
         });
       }
 
-      // Invalidate queries to get fresh data - with a short delay for fast uploads
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: knowledgeKeys.lists() });
-        queryClient.invalidateQueries({ queryKey: knowledgeKeys.summariesPrefix() });
-        queryClient.invalidateQueries({ queryKey: progressKeys.active() });
-      }, 1000);
+      // Only invalidate progress to start tracking the new operation
+      // The lists/summaries will refresh automatically via polling when operations are active
+      queryClient.invalidateQueries({ queryKey: progressKeys.active() });
 
       // Don't show success here - upload is just starting in background
       // Success/failure will be shown via progress polling
@@ -514,7 +491,6 @@ export function useStopCrawl() {
     },
     onError: (error, progressId) => {
       // If it's a 404, the operation might have already completed or been cancelled
-      // TODO: Phase 4 - Improve error type safety, create proper error interface instead of 'as any'
       // See PRPs/local/frontend-state-management-refactor.md Phase 4: Configure Request Deduplication
       const is404Error =
         (error as any)?.statusCode === 404 ||
@@ -705,8 +681,7 @@ export function useUpdateKnowledgeItem() {
 
       // Invalidate all related queries
       queryClient.invalidateQueries({ queryKey: knowledgeKeys.detail(sourceId) });
-      queryClient.invalidateQueries({ queryKey: knowledgeKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: knowledgeKeys.summariesPrefix() }); // Add summaries cache
+      queryClient.invalidateQueries({ queryKey: knowledgeKeys.summariesPrefix() });
     },
   });
 }
@@ -726,10 +701,8 @@ export function useRefreshKnowledgeItem() {
       // Remove the item from cache as it's being refreshed
       queryClient.removeQueries({ queryKey: knowledgeKeys.detail(sourceId) });
 
-      // Invalidate list after a delay
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: knowledgeKeys.lists() });
-      }, 5000);
+      // Invalidate summaries immediately - backend is consistent after refresh initiation
+      queryClient.invalidateQueries({ queryKey: knowledgeKeys.summariesPrefix() });
 
       return data;
     },
@@ -746,8 +719,6 @@ export function useRefreshKnowledgeItem() {
  * Only polls when there are active operations that we started
  */
 export function useKnowledgeSummaries(filter?: KnowledgeItemsFilter) {
-  const queryClient = useQueryClient();
-
   // Track active crawl IDs locally - only set when we start a crawl/refresh
   const [activeCrawlIds, setActiveCrawlIds] = useState<string[]>([]);
 
@@ -783,37 +754,8 @@ export function useKnowledgeSummaries(filter?: KnowledgeItemsFilter) {
   });
 
   // When operations complete, remove them from tracking
-  useEffect(() => {
-    const completedOps = activeOperations.filter(
-      (op) => op.status === "completed" || op.status === "failed" || op.status === "error",
-    );
-
-    if (completedOps.length > 0) {
-      // Remove completed operations from tracking
-      setActiveCrawlIds((prev) => prev.filter((id) => !completedOps.some((op) => op.progressId === id)));
-
-      // Check if any completed operations are uploads (they complete faster)
-      const hasCompletedUpload = completedOps.some((op) => op.operation_type === "upload" || op.type === "upload");
-
-      // Use shorter delay for uploads (1s) vs crawls (5s) to handle fast operations
-      const delay = hasCompletedUpload ? 1000 : 5000;
-
-      // Invalidate after a delay to allow backend database to become consistent
-      const timer = setTimeout(() => {
-        // Invalidate all summaries regardless of filter
-        queryClient.invalidateQueries({ queryKey: knowledgeKeys.summariesPrefix() });
-        // Also invalidate lists for consistency
-        queryClient.invalidateQueries({ queryKey: knowledgeKeys.lists() });
-
-        // For uploads, also refetch immediately to ensure UI shows the item
-        if (hasCompletedUpload) {
-          queryClient.refetchQueries({ queryKey: knowledgeKeys.summariesPrefix() });
-        }
-      }, delay);
-
-      return () => clearTimeout(timer);
-    }
-  }, [activeOperations, queryClient]);
+  // Trust smart polling to handle eventual consistency - no manual invalidation needed
+  // Active operations are already tracked and polling handles updates when operations complete
 
   return {
     ...summaryQuery,
