@@ -19,6 +19,7 @@ from pydantic_ai import Agent, RunContext
 
 from .base_agent import ArchonDependencies, BaseAgent
 from .mcp_client import get_mcp_client
+from src.server.utils import get_supabase_client
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +77,6 @@ class DocumentAgent(BaseAgent[DocumentDependencies, DocumentOperation]):
         agent = Agent(
             model=self.model,
             deps_type=DocumentDependencies,
-            result_type=DocumentOperation,
             system_prompt="""You are a Document Management Assistant that helps users create, update, and modify project documents through conversation.
 
 **Your Capabilities:**
@@ -837,8 +837,29 @@ class DocumentAgent(BaseAgent[DocumentDependencies, DocumentOperation]):
 
         try:
             result = await self.run(user_message, deps)
-            self.logger.info(f"Document operation completed: {result.operation_type}")
-            return result
+            # If the underlying agent returned our structured model, use it
+            if isinstance(result, DocumentOperation):
+                self.logger.info(f"Document operation completed: {result.operation_type}")
+                return result
+
+            # Otherwise, wrap plain/textual outputs into a structured response
+            preview = None
+            try:
+                text = str(result)
+                preview = text[:200] if text else None
+            except Exception:
+                text = ""
+
+            return DocumentOperation(
+                operation_type="message",
+                document_id=None,
+                document_type=None,
+                title=None,
+                success=True,
+                message=text or "",
+                changes_made=[],
+                content_preview=preview,
+            )
         except Exception as e:
             self.logger.error(f"Document operation failed: {str(e)}")
             # Return error result
