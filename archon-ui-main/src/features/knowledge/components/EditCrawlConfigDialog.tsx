@@ -121,8 +121,9 @@ export const EditCrawlConfigDialog: React.FC<EditCrawlConfigDialogProps> = ({
   const isProcessing = updateMutation.isPending;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-hidden flex flex-col">
+    <div onClick={(e) => e.stopPropagation()}>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader className="flex-shrink-0 pb-2">
           <DialogTitle>Edit Crawler Configuration</DialogTitle>
           <DialogDescription>
@@ -232,5 +233,6 @@ export const EditCrawlConfigDialog: React.FC<EditCrawlConfigDialogProps> = ({
         )}
       </DialogContent>
     </Dialog>
+    </div>
   );
 };
