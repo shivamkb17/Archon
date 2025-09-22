@@ -245,18 +245,26 @@ export const DocumentBrowser: React.FC<DocumentBrowserProps> = ({ sourceId, open
                             {chunk.metadata.title}
                           </h4>
                           )}
-                          {(chunk.url || chunk.metadata?.url) && (
-                            <a
-                              href={chunk.url || chunk.metadata?.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-[10px] px-2 py-1 rounded bg-white/5 text-gray-500 hover:text-cyan-400 hover:bg-cyan-500/10 font-mono shrink-0 transition-colors flex items-center gap-1"
-                              title={`View on ${extractDomain(chunk.url || chunk.metadata?.url || "")}`}
-                            >
-                              {extractDomain(chunk.url || chunk.metadata?.url || "")}
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
-                          )}
+                          {(() => {
+                            // Extract URL and domain once to avoid repeated computation
+                            const resolvedUrl = chunk.url || chunk.metadata?.url;
+                            if (!resolvedUrl) return null;
+
+                            const resolvedDomain = extractDomain(resolvedUrl);
+
+                            return (
+                              <a
+                                href={resolvedUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[10px] px-2 py-1 rounded bg-white/5 text-gray-500 hover:text-cyan-400 hover:bg-cyan-500/10 font-mono shrink-0 transition-colors flex items-center gap-1"
+                                title={`View on ${resolvedDomain}`}
+                              >
+                                {resolvedDomain}
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            );
+                          })()}
                         </div>
 
                         <div className="text-sm text-gray-300 whitespace-pre-wrap">
