@@ -574,6 +574,86 @@ async def get_knowledge_item_code_examples(
         raise HTTPException(status_code=500, detail={"error": str(e)})
 
 
+@router.post("/knowledge-items/{source_id}/update-config")
+async def update_crawl_config(source_id: str, request: dict):
+    """
+    Update crawler configuration for an existing knowledge item and trigger a recrawl.
+
+    This endpoint allows users to edit existing crawler configuration including:
+    - URL
+    - Knowledge type
+    - Max depth
+    - Tags
+    - Advanced crawl configuration (domain filters, patterns, etc.)
+    """
+    # Import CrawlRequestV2 and CrawlConfig models
+    from ..models.crawl_models import CrawlRequestV2, CrawlConfig
+
+    # Validate API key before starting expensive operation
+    logger.info("🔍 About to validate API key for config update...")
+    provider_config = await credential_service.get_active_provider("embedding")
+    provider = provider_config.get("provider", "openai")
+    await _validate_provider_api_key(provider)
+    logger.info("✅ API key validation completed successfully for config update")
+
+    try:
+        safe_logfire_info(f"Starting knowledge item config update | source_id={source_id}")
+
+        # Get the existing knowledge item to verify it exists
+        service = KnowledgeItemService(get_supabase_client())
+        existing_item = await service.get_item(source_id)
+
+        if not existing_item:
+            raise HTTPException(
+                status_code=404, detail={"error": f"Knowledge item {source_id} not found"}
+            )
+
+        # Parse request into CrawlRequestV2 for validation
+        crawl_request = CrawlRequestV2(**request)
+
+        # Generate unique progress ID for the recrawl
+        progress_id = str(uuid.uuid4())
+
+        # Create progress tracker for HTTP polling
+        tracker = ProgressTracker(progress_id, operation_type="crawl")
+        await tracker.start({
+            "status": "starting",
+            "url": crawl_request.url,
+            "source_id": source_id,
+            "operation": "update_and_recrawl",
+            "has_filters": crawl_request.crawl_config is not None
+        })
+
+        # First delete the existing knowledge item and its documents
+        safe_logfire_info(f"Deleting existing knowledge item before recrawl | source_id={source_id}")
+        try:
+            await service.delete_item(source_id)
+        except Exception as e:
+            safe_logfire_error(f"Failed to delete existing item | error={str(e)}")
+            # Continue anyway - we'll overwrite
+
+        # Create async task for crawling with updated configuration
+        crawl_task = asyncio.create_task(
+            _run_crawl_v2(request_dict=crawl_request.dict(), progress_id=progress_id)
+        )
+        active_crawl_tasks[progress_id] = crawl_task
+
+        safe_logfire_info(
+            f"Config update crawl task created | progress_id={progress_id} | url={crawl_request.url}"
+        )
+
+        return {
+            "success": True,
+            "progressId": progress_id,
+            "message": "Configuration updated. Recrawl initiated.",
+            "estimatedDuration": "2-10 minutes depending on site size"
+        }
+
+    except Exception as e:
+        safe_logfire_error(f"Failed to update config and recrawl | error={str(e)}")
+        raise HTTPException(status_code=500, detail={"error": str(e)})
+
+
 @router.post("/knowledge-items/{source_id}/refresh")
 async def refresh_knowledge_item(source_id: str):
     """Refresh a knowledge item by re-crawling its URL with the same metadata."""

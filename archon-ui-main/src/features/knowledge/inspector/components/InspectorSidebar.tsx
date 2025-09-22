@@ -4,7 +4,7 @@
  */
 
 import { motion } from "framer-motion";
-import { Code, ExternalLink, FileText, Globe, Hash, Loader2, Search } from "lucide-react";
+import { Code, FileText, Globe, Hash, Loader2, Search } from "lucide-react";
 import { useMemo } from "react";
 import { Button, Input } from "../../../ui/primitives";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../ui/primitives/select";
@@ -205,23 +205,6 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
                       <p className="text-xs text-gray-500 line-clamp-2" title={getItemDescription(item)}>
                         {getItemDescription(item)}
                       </p>
-
-                      {/* View Source link for documents */}
-                      {viewMode === "documents" && (item as DocumentChunk).url && (
-                        <div className="mt-1">
-                          <a
-                            href={(item as DocumentChunk).url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-gray-500 hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors"
-                            title="View source"
-                          >
-                            <ExternalLink className="w-3 h-3" />
-                            View Source
-                          </a>
-                        </div>
-                      )}
 
                       {item.metadata?.relevance_score != null && (
                         <div className="flex items-center gap-1 mt-1">
