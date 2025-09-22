@@ -327,6 +327,32 @@ async def delete_knowledge_item(source_id: str):
         raise HTTPException(status_code=500, detail={"error": str(e)})
 
 
+@router.get("/knowledge-items/{source_id}")
+async def get_knowledge_item(source_id: str):
+    """
+    Get a single knowledge item by its source ID.
+
+    Args:
+        source_id: The unique source ID of the knowledge item
+
+    Returns:
+        The knowledge item with all its metadata
+    """
+    try:
+        service = KnowledgeItemService(get_supabase_client())
+        item = await service.get_item(source_id)
+
+        if not item:
+            raise HTTPException(status_code=404, detail={"error": f"Knowledge item with source_id {source_id} not found"})
+
+        return item
+    except HTTPException:
+        raise
+    except Exception as e:
+        safe_logfire_error(f"Failed to get knowledge item | error={str(e)} | source_id={source_id}")
+        raise HTTPException(status_code=500, detail={"error": str(e)})
+
+
 @router.get("/knowledge-items/{source_id}/chunks")
 async def get_knowledge_item_chunks(
     source_id: str,
