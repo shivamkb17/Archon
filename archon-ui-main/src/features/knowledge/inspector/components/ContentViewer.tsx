@@ -3,9 +3,11 @@
  * Displays the selected document or code content
  */
 
-import { Check, Code, Copy, FileText, Layers } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Code, Copy, ExternalLink, FileText, Info, Layers } from "lucide-react";
+import { useState } from "react";
 import { Button } from "../../../ui/primitives";
 import type { InspectorSelectedItem } from "../../types";
+import { extractDomain } from "../../utils/knowledge-utils";
 
 interface ContentViewerProps {
   selectedItem: InspectorSelectedItem | null;
@@ -14,6 +16,7 @@ interface ContentViewerProps {
 }
 
 export const ContentViewer: React.FC<ContentViewerProps> = ({ selectedItem, onCopy, copiedId }) => {
+  const [showMetadata, setShowMetadata] = useState(false);
   if (!selectedItem) {
     return (
       <div className="flex-1 flex items-center justify-center text-gray-500">
@@ -103,25 +106,50 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ selectedItem, onCo
       </div>
 
       {/* Content Body */}
-      <div className="flex-1 overflow-y-auto min-h-0 p-6 scrollbar-thin">
-        {selectedItem.type === "document" ? (
-          <div className="prose prose-invert max-w-none">
-            <pre className="whitespace-pre-wrap text-sm text-gray-300 font-sans leading-relaxed">
-              {selectedItem.content || "No content available"}
-            </pre>
-          </div>
-        ) : (
-          <div className="relative">
-            <pre className="bg-black/30 border border-white/10 rounded-lg p-4 overflow-x-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-              <code className="text-sm text-gray-300 font-mono">
-                {selectedItem.content || "// No code content available"}
-              </code>
-            </pre>
-          </div>
-        )}
+      <div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin">
+        <div className="p-6">
+          {selectedItem.type === "document" ? (
+            <div className="prose prose-invert max-w-none">
+              <pre className="whitespace-pre-wrap text-sm text-gray-300 font-sans leading-relaxed">
+                {selectedItem.content || "No content available"}
+              </pre>
+            </div>
+          ) : (
+            <div className="relative">
+              <pre className="bg-black/30 border border-white/10 rounded-lg p-4 overflow-x-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                <code className="text-sm text-gray-300 font-mono">
+                  {selectedItem.content || "// No code content available"}
+                </code>
+              </pre>
+            </div>
+          )}
+
+          {/* Metadata Section */}
+          {selectedItem.metadata && Object.keys(selectedItem.metadata).length > 0 && (
+            <div className="mt-6">
+              <button
+                type="button"
+                onClick={() => setShowMetadata(!showMetadata)}
+                className="flex items-center gap-2 text-sm font-medium text-cyan-400 hover:text-cyan-300 transition-colors mb-3"
+              >
+                {showMetadata ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                <Info className="w-4 h-4" />
+                Metadata
+              </button>
+
+              {showMetadata && (
+                <div className="bg-black/40 border border-white/10 rounded-lg p-4">
+                  <pre className="text-xs text-gray-400 font-mono whitespace-pre-wrap overflow-x-auto">
+                    {JSON.stringify(selectedItem.metadata, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Content Footer - Show metadata */}
+      {/* Content Footer - Show quick info */}
       <div className="border-t border-white/10 flex-shrink-0">
         <div className="px-4 py-3 flex items-center justify-between text-xs text-gray-500">
           <div className="flex items-center gap-4">
@@ -131,15 +159,21 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ selectedItem, onCo
                 <span className="text-cyan-400">{(selectedItem.metadata.relevance_score * 100).toFixed(0)}%</span>
               </span>
             )}
-            {selectedItem.type === "document" && "url" in selectedItem.metadata && selectedItem.metadata.url && (
-              <a
-                href={selectedItem.metadata.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-cyan-400 hover:text-cyan-300 transition-colors underline"
-              >
-                View Source
-              </a>
+            {selectedItem.type === "document" && selectedItem.metadata && "url" in selectedItem.metadata && selectedItem.metadata.url && (
+              <>
+                <span className="text-gray-600">
+                  Domain: <span className="text-white/70">{extractDomain(selectedItem.metadata.url)}</span>
+                </span>
+                <a
+                  href={selectedItem.metadata.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-cyan-400 hover:text-cyan-300 transition-colors flex items-center gap-1"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  View Source
+                </a>
+              </>
             )}
           </div>
           <span className="text-gray-600">{selectedItem.type === "document" ? "Document Chunk" : "Code Example"}</span>

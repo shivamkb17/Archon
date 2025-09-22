@@ -4,8 +4,8 @@
  */
 
 import { motion } from "framer-motion";
-import { Code, ExternalLink, FileText, Globe, Hash, Info, Loader2, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Code, ExternalLink, FileText, Globe, Hash, Loader2, Search } from "lucide-react";
+import { useMemo } from "react";
 import { Button, Input } from "../../../ui/primitives";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../ui/primitives/select";
 import { cn } from "../../../ui/primitives/styles";
@@ -41,7 +41,6 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
   selectedDomain = "all",
   onDomainChange,
 }) => {
-  const [showMetadata, setShowMetadata] = useState<string | null>(null);
 
   // Extract unique domains from documents
   const domainStats = useMemo(() => {
@@ -207,33 +206,20 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
                         {getItemDescription(item)}
                       </p>
 
-                      {/* Action buttons for documents */}
-                      {viewMode === "documents" && (
-                        <div className="flex items-center gap-1 mt-1">
-                          {(item as DocumentChunk).url && (
-                            <a
-                              href={(item as DocumentChunk).url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-gray-500 hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors flex items-center gap-1"
-                              title="View source"
-                            >
-                              <ExternalLink className="w-3 h-3" />
-                              Source
-                            </a>
-                          )}
-                          <div
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setShowMetadata(showMetadata === String(item.id) ? null : String(item.id));
-                            }}
-                            className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-gray-500 hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors cursor-pointer"
-                            title="Toggle metadata"
+                      {/* View Source link for documents */}
+                      {viewMode === "documents" && (item as DocumentChunk).url && (
+                        <div className="mt-1">
+                          <a
+                            href={(item as DocumentChunk).url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-gray-500 hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors"
+                            title="View source"
                           >
-                            <Info className="w-3 h-3" />
-                            {showMetadata === String(item.id) ? "Hide" : "Show"} Meta
-                          </div>
+                            <ExternalLink className="w-3 h-3" />
+                            View Source
+                          </a>
                         </div>
                       )}
 
@@ -248,25 +234,6 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
                     </div>
                   </div>
                 </motion.div>
-
-                {/* Metadata panel - Outside clickable area */}
-                {showMetadata === String(item.id) && viewMode === "documents" && (item as DocumentChunk).metadata && (
-                  <div className="mt-1 ml-7 mr-3 p-2 bg-black/40 border border-white/10 rounded text-[10px] text-gray-400 font-mono">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-cyan-400">Metadata:</span>
-                      <button
-                        type="button"
-                        onClick={() => setShowMetadata(null)}
-                        className="text-gray-500 hover:text-white text-sm"
-                      >
-                        ×
-                      </button>
-                    </div>
-                    <pre className="whitespace-pre-wrap overflow-x-auto max-h-48 overflow-y-auto">
-                      {JSON.stringify((item as DocumentChunk).metadata, null, 2)}
-                    </pre>
-                  </div>
-                )}
               </div>
             ))}
 
