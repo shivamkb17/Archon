@@ -4,9 +4,10 @@
  */
 
 import { motion } from "framer-motion";
-import { Code, FileText, Globe, Hash, Loader2, Search, X } from "lucide-react";
-import { useMemo } from "react";
+import { Code, ExternalLink, FileText, Globe, Hash, Info, Loader2, Search } from "lucide-react";
+import { useMemo, useState } from "react";
 import { Button, Input } from "../../../ui/primitives";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../ui/primitives/select";
 import { cn } from "../../../ui/primitives/styles";
 import type { CodeExample, DocumentChunk } from "../../types";
 import { extractDomain } from "../../utils/knowledge-utils";
@@ -22,8 +23,8 @@ interface InspectorSidebarProps {
   hasNextPage: boolean;
   onLoadMore: () => void;
   isFetchingNextPage: boolean;
-  selectedDomains?: Set<string>;
-  onDomainsChange?: (domains: Set<string>) => void;
+  selectedDomain?: string;
+  onDomainChange?: (domain: string) => void;
 }
 
 export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
@@ -37,9 +38,11 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
   hasNextPage,
   onLoadMore,
   isFetchingNextPage,
-  selectedDomains = new Set(),
-  onDomainsChange,
+  selectedDomain = "all",
+  onDomainChange,
 }) => {
+  const [showMetadata, setShowMetadata] = useState<string | null>(null);
+
   // Extract unique domains from documents
   const domainStats = useMemo(() => {
     if (viewMode !== "documents") return [];
@@ -58,18 +61,18 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
       .map(([domain, count]) => ({ domain, count }));
   }, [items, viewMode]);
 
-  // Filter items by selected domains
+  // Filter items by selected domain
   const filteredItems = useMemo(() => {
-    if (viewMode !== "documents" || selectedDomains.size === 0) {
+    if (viewMode !== "documents" || selectedDomain === "all") {
       return items;
     }
 
     return (items as DocumentChunk[]).filter((doc) => {
       const url = doc.url || doc.metadata?.url;
       if (!url) return false;
-      return selectedDomains.has(extractDomain(url));
+      return extractDomain(url) === selectedDomain;
     });
-  }, [items, selectedDomains, viewMode]);
+  }, [items, selectedDomain, viewMode]);
   const getItemTitle = (item: DocumentChunk | CodeExample) => {
     const idSuffix = String(item.id).slice(-6);
     if (viewMode === "documents") {
@@ -115,63 +118,33 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
           />
         </div>
 
-        {/* Domain Filter - Only show for documents */}
-        {viewMode === "documents" && domainStats.length > 0 && onDomainsChange && (
+        {/* Domain Filter Dropdown - Only show for documents */}
+        {viewMode === "documents" && domainStats.length > 0 && onDomainChange && (
           <div className="space-y-2">
             <div className="text-xs text-gray-400 flex items-center gap-2">
               <Globe className="w-3 h-3" />
               Domain Filter
-              {selectedDomains.size > 0 && (
-                <button
-                  type="button"
-                  onClick={() => onDomainsChange(new Set())}
-                  className="ml-auto text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
-                >
-                  <X className="w-3 h-3" />
-                  Clear
-                </button>
-              )}
             </div>
-            <div className="flex flex-wrap gap-1">
-              {domainStats.slice(0, 5).map(({ domain, count }) => {
-                const isSelected = selectedDomains.has(domain);
-                return (
-                  <button
-                    key={domain}
-                    type="button"
-                    onClick={() => {
-                      const newSelection = new Set(selectedDomains);
-                      if (isSelected) {
-                        newSelection.delete(domain);
-                      } else {
-                        newSelection.add(domain);
-                      }
-                      onDomainsChange(newSelection);
-                    }}
-                    className={cn(
-                      "px-2 py-0.5 text-[10px] rounded-full border transition-all",
-                      "flex items-center gap-1",
-                      isSelected
-                        ? "bg-cyan-500/20 border-cyan-500/50 text-cyan-400"
-                        : "bg-black/20 border-white/10 text-gray-500 hover:border-cyan-500/30 hover:text-cyan-400"
-                    )}
-                  >
-                    <span className="truncate max-w-[100px]">{domain}</span>
-                    <span className={cn(
-                      "px-1 rounded text-[9px] font-mono",
-                      isSelected ? "bg-cyan-500/30" : "bg-white/10"
-                    )}>
-                      {count}
-                    </span>
-                  </button>
-                );
-              })}
-              {domainStats.length > 5 && (
-                <span className="text-[10px] text-gray-600 px-2 py-0.5">
-                  +{domainStats.length - 5} more
-                </span>
-              )}
-            </div>
+            <Select value={selectedDomain} onValueChange={onDomainChange}>
+              <SelectTrigger className="w-full h-8 text-xs bg-black/30 border-white/10">
+                <SelectValue placeholder="Select domain" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" className="text-xs">
+                  All domains ({items.length} documents)
+                </SelectItem>
+                {domainStats.map(({ domain, count }) => (
+                  <SelectItem key={domain} value={domain} className="text-xs">
+                    <div className="flex items-center justify-between w-full">
+                      <span className="truncate">{domain}</span>
+                      <span className="ml-2 px-1.5 py-0.5 bg-white/10 rounded text-[10px] font-mono">
+                        {count}
+                      </span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         )}
       </div>
@@ -230,16 +203,51 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs text-gray-500 line-clamp-2 flex-1" title={getItemDescription(item)}>
-                        {getItemDescription(item)}
-                      </p>
-                      {viewMode === "documents" && (item as DocumentChunk).url && (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 text-gray-600 font-mono shrink-0">
-                          {extractDomain((item as DocumentChunk).url || "")}
-                        </span>
-                      )}
-                    </div>
+                    <p className="text-xs text-gray-500 line-clamp-2" title={getItemDescription(item)}>
+                      {getItemDescription(item)}
+                    </p>
+
+                    {/* Action buttons for documents */}
+                    {viewMode === "documents" && (
+                      <div className="flex items-center gap-1 mt-1">
+                        {(item as DocumentChunk).url && (
+                          <a
+                            href={(item as DocumentChunk).url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-gray-500 hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors flex items-center gap-1"
+                            title="View source"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            View Source
+                          </a>
+                        )}
+                        {(item as DocumentChunk).metadata && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowMetadata(showMetadata === item.id ? null : String(item.id));
+                            }}
+                            className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-gray-500 hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors flex items-center gap-1"
+                            title="View metadata"
+                          >
+                            <Info className="w-3 h-3" />
+                            Metadata
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Metadata panel */}
+                    {showMetadata === item.id && (item as DocumentChunk).metadata && (
+                      <div className="mt-2 p-2 bg-black/30 rounded text-[10px] text-gray-400 font-mono">
+                        <pre className="whitespace-pre-wrap overflow-x-auto">
+                          {JSON.stringify((item as DocumentChunk).metadata, null, 2)}
+                        </pre>
+                      </div>
+                    )}
                     {item.metadata?.relevance_score != null && (
                       <div className="flex items-center gap-1 mt-1">
                         <Hash className="w-3 h-3 text-gray-600" aria-hidden="true" />
