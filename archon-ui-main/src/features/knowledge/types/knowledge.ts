@@ -143,36 +143,29 @@ export interface KnowledgeItemsFilter {
 /**
  * Advanced crawler configuration for domain and URL pattern filtering.
  *
- * ## Precedence Rules (highest to lowest priority):
- * 1. **excluded_domains** - Always blocks, takes highest priority
- * 2. **allowed_domains** - If specified, only these domains are crawled
- * 3. **exclude_patterns** - Blocks matching URL patterns
- * 4. **include_patterns** - If specified, only matching patterns are crawled
+ * Precedence Rules (highest to lowest priority):
+ * 1. excluded_domains - Always blocks, takes highest priority
+ * 2. allowed_domains - If specified, only these domains are crawled
+ * 3. exclude_patterns - Blocks matching URL patterns
+ * 4. include_patterns - If specified, only matching patterns are crawled
  *
- * ## Pattern Syntax:
- * - **Domain patterns**: Support wildcards (*.example.com) and exact matches
- * - **URL patterns**: Use glob syntax with fnmatch (*, ?, [seq], [!seq])
+ * Pattern Syntax:
+ * - Domain patterns: Support wildcards (*.example.com) and exact matches
+ * - URL patterns: Use glob syntax with fnmatch (*, ?, [seq], [!seq])
  *
- * ## Common Examples:
- * ```typescript
- * // Crawl only docs subdomain, excluding API references
- * {
- *   allowed_domains: ["docs.example.com"],
- *   exclude_patterns: ["*/api-reference/*", "*/deprecated/*"]
- * }
+ * Common Examples:
  *
- * // Crawl all subdomains except blog, only documentation paths
- * {
- *   allowed_domains: ["*.example.com"],
- *   excluded_domains: ["blog.example.com"],
- *   include_patterns: ["*/docs/*", "*/guide/*", "*/tutorial/*"]
- * }
+ * Example 1 - Crawl only docs subdomain, excluding API references:
+ *   allowed_domains: ["docs.example.com"]
+ *   exclude_patterns: ["*\/api-reference\/*", "*\/deprecated\/*"]
  *
- * // Block specific file types across all domains
- * {
- *   exclude_patterns: ["*.pdf", "*.zip", "*/downloads/*"]
- * }
- * ```
+ * Example 2 - Crawl all subdomains except blog, only documentation paths:
+ *   allowed_domains: ["*.example.com"]
+ *   excluded_domains: ["blog.example.com"]
+ *   include_patterns: ["*\/docs\/*", "*\/guide\/*", "*\/tutorial\/*"]
+ *
+ * Example 3 - Block specific file types across all domains:
+ *   exclude_patterns: ["*.pdf", "*.zip", "*\/downloads\/*"]
  */
 export interface CrawlConfig {
   /**
