@@ -29,7 +29,7 @@ export const EditCrawlConfigDialog: React.FC<EditCrawlConfigDialogProps> = ({
   onSuccess,
 }) => {
   const { showToast } = useToast();
-  const { data: item, isLoading: itemLoading } = useKnowledgeItem(sourceId);
+  const { data: item, isLoading: itemLoading, error: itemError } = useKnowledgeItem(open ? sourceId : null);
   const updateMutation = useUpdateCrawlConfig();
 
   // Form state
@@ -54,27 +54,40 @@ export const EditCrawlConfigDialog: React.FC<EditCrawlConfigDialogProps> = ({
   // Load existing configuration when item loads
   useEffect(() => {
     if (item && open) {
+      // URL is a required field in KnowledgeItem
       setUrl(item.url || "");
-      setKnowledgeType(item.knowledge_type || item.metadata?.knowledge_type || "technical");
 
-      // Max depth might be at top level or in metadata
-      const depthValue = item.max_depth || item.metadata?.max_depth || 2;
+      // Knowledge type is also a required field
+      setKnowledgeType(item.knowledge_type || "technical");
+
+      // Check for max_depth at various locations
+      const depthValue =
+        item.max_depth ||
+        item.metadata?.max_depth ||
+        item.metadata?.crawl_config?.max_depth ||
+        2;
       setMaxDepth(depthValue.toString());
 
-      // Tags could be at top level or in metadata
-      const tagsValue = item.tags || item.metadata?.tags || [];
+      // Check for tags at various locations
+      const tagsValue =
+        item.tags ||
+        item.metadata?.tags ||
+        [];
       setTags(Array.isArray(tagsValue) ? tagsValue : []);
 
       // Load existing crawl config if available
       // It could be at top level or nested in metadata
-      const configValue = item.crawl_config || item.metadata?.crawl_config || {};
+      const configValue =
+        item.crawl_config ||
+        item.metadata?.crawl_config ||
+        {};
 
-      // Ensure the config has the right shape
+      // Ensure the config has the right shape with proper defaults
       setCrawlConfig({
-        allowed_domains: configValue.allowed_domains || [],
-        excluded_domains: configValue.excluded_domains || [],
-        include_patterns: configValue.include_patterns || [],
-        exclude_patterns: configValue.exclude_patterns || []
+        allowed_domains: Array.isArray(configValue.allowed_domains) ? configValue.allowed_domains : [],
+        excluded_domains: Array.isArray(configValue.excluded_domains) ? configValue.excluded_domains : [],
+        include_patterns: Array.isArray(configValue.include_patterns) ? configValue.include_patterns : [],
+        exclude_patterns: Array.isArray(configValue.exclude_patterns) ? configValue.exclude_patterns : []
       });
     }
   }, [item, open]);
@@ -108,8 +121,8 @@ export const EditCrawlConfigDialog: React.FC<EditCrawlConfigDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-hidden flex flex-col">
-        <DialogHeader className="flex-shrink-0">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader className="flex-shrink-0 pb-2">
           <DialogTitle>Edit Crawler Configuration</DialogTitle>
           <DialogDescription>
             Update the crawler settings for this knowledge item
@@ -120,9 +133,17 @@ export const EditCrawlConfigDialog: React.FC<EditCrawlConfigDialogProps> = ({
           <div className="flex items-center justify-center py-8">
             <Loader2 className="w-6 h-6 animate-spin text-cyan-400" />
           </div>
+        ) : itemError ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="text-red-400">
+              <AlertCircle className="w-6 h-6 mx-auto mb-2" />
+              <p>Failed to load configuration</p>
+              <p className="text-sm text-gray-400 mt-1">{itemError.message}</p>
+            </div>
+          </div>
         ) : (
-          <div className="flex-1 overflow-y-auto pr-2">
-            <div className="space-y-6 pb-4">
+          <div className="flex-1 overflow-y-auto px-6 -mx-6">
+            <div className="space-y-6 pb-6 pr-2">
               {/* Warning Alert */}
               <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 flex gap-3">
                 <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
