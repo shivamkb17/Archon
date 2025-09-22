@@ -401,6 +401,8 @@ export function useCrawlUrlV2() {
               progressId: tempProgressId,
             } as ActiveOperation,
           ],
+          count: 1,
+          timestamp: new Date().toISOString(),
         });
       } else {
         queryClient.setQueryData<ActiveOperationsResponse>(progressKeys.active(), {
@@ -416,6 +418,8 @@ export function useCrawlUrlV2() {
             } as ActiveOperation,
             ...(previousOperations.operations || []),
           ],
+          count: (previousOperations.count || 0) + 1,
+          timestamp: new Date().toISOString(),
         });
       }
 
@@ -429,7 +433,8 @@ export function useCrawlUrlV2() {
       if (context) {
         const activeOps = queryClient.getQueryData<ActiveOperationsResponse>(progressKeys.active());
         if (activeOps) {
-          const updated = {
+          const updated: ActiveOperationsResponse = {
+            ...activeOps, // Preserve count, timestamp, and any other fields
             operations: activeOps.operations.map((op) =>
               op.progressId === context.tempProgressId ? { ...op, progressId: response.progressId } : op,
             ),
@@ -446,13 +451,16 @@ export function useCrawlUrlV2() {
             const updated = {
               ...data,
               items: data.items.map((item) =>
-                item.id === context.tempItemId ? { ...item, source_id: response.progressId } : item,
+                item.source_id === context.tempProgressId ? { ...item, source_id: response.progressId } : item,
               ),
             };
             queryClient.setQueryData(qk, updated);
           }
         }
       }
+
+      // Invalidate to get fresh data
+      queryClient.invalidateQueries({ queryKey: progressKeys.active() });
 
       // Return the response so caller can access progressId
       return response;
