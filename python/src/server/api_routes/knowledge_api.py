@@ -653,7 +653,15 @@ async def update_crawl_config(source_id: str, request: CrawlRequestV2):
         # First delete the existing knowledge item and its documents
         safe_logfire_info(f"Deleting existing knowledge item before recrawl | source_id={source_id}")
         try:
-            await service.delete_item(source_id)
+            from ..services.source_management_service import SourceManagementService
+            source_service = SourceManagementService(get_supabase_client())
+            success, result_data = source_service.delete_source(source_id)
+
+            if not success:
+                safe_logfire_error(f"Failed to delete existing item | error={result_data.get('error', 'Unknown error')}")
+                # Continue anyway - we'll overwrite
+            else:
+                safe_logfire_info(f"Successfully deleted existing knowledge item and documents | source_id={source_id}")
         except Exception as e:
             safe_logfire_error(f"Failed to delete existing item | error={str(e)}")
             # Continue anyway - we'll overwrite
@@ -1053,9 +1061,19 @@ async def _run_crawl_v2(request_dict: dict, progress_id: str):
         )
         orchestration_service.set_progress_id(progress_id)
 
-        # Add crawl_config to metadata for storage
+        # Add important fields to metadata for storage and later retrieval
+        request_dict["metadata"] = request_dict.get("metadata", {})
+
+        # Always store these fields in metadata
+        request_dict["metadata"]["knowledge_type"] = request_dict.get("knowledge_type", "technical")
+        request_dict["metadata"]["max_depth"] = request_dict.get("max_depth", 2)
+        request_dict["metadata"]["tags"] = request_dict.get("tags", [])
+
+        # Store the original URL for later reference
+        request_dict["metadata"]["original_url"] = request_dict.get("url", "")
+
+        # Add crawl_config to metadata if present
         if crawl_config:
-            request_dict["metadata"] = request_dict.get("metadata", {})
             request_dict["metadata"]["crawl_config"] = crawl_config.dict()
 
         # Orchestrate the crawl - this returns immediately with task info
