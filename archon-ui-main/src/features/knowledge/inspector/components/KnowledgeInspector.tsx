@@ -69,11 +69,12 @@ export const KnowledgeInspector: React.FC<KnowledgeInspectorProps> = ({
         id: firstDoc.id,
         content: firstDoc.content || "",
         metadata: {
+          // Include all metadata from the backend
+          ...firstDoc.metadata,
+          // Also include top-level fields that might be useful
           title: firstDoc.title || firstDoc.metadata?.title,
           section: firstDoc.section || firstDoc.metadata?.section,
-          relevance_score: firstDoc.metadata?.relevance_score,
           url: firstDoc.url || firstDoc.metadata?.url,
-          tags: firstDoc.metadata?.tags,
         },
       });
     } else {
@@ -83,10 +84,12 @@ export const KnowledgeInspector: React.FC<KnowledgeInspectorProps> = ({
         id: String(firstCode.id || ""),
         content: firstCode.content || firstCode.code || "",
         metadata: {
+          // Include all metadata from the backend
+          ...firstCode.metadata,
+          // Also include top-level fields that might be useful
           language: firstCode.language,
           file_path: firstCode.file_path,
           summary: firstCode.summary,
-          relevance_score: firstCode.metadata?.relevance_score,
           title: firstCode.title || firstCode.example_name,
         },
       });
@@ -112,11 +115,12 @@ export const KnowledgeInspector: React.FC<KnowledgeInspectorProps> = ({
           id: doc.id || "",
           content: doc.content || "",
           metadata: {
+            // Include all metadata from the backend
+            ...doc.metadata,
+            // Also include top-level fields that might be useful
             title: doc.title || doc.metadata?.title,
             section: doc.section || doc.metadata?.section,
-            relevance_score: doc.metadata?.relevance_score,
             url: doc.url || doc.metadata?.url,
-            tags: doc.metadata?.tags,
           },
         });
       } else {
@@ -126,10 +130,12 @@ export const KnowledgeInspector: React.FC<KnowledgeInspectorProps> = ({
           id: String(code.id),
           content: code.content || code.code || "",
           metadata: {
+            // Include all metadata from the backend
+            ...code.metadata,
+            // Also include top-level fields that might be useful
             language: code.language,
             file_path: code.file_path,
             summary: code.summary,
-            relevance_score: code.metadata?.relevance_score,
             title: code.title || code.example_name,
           },
         });

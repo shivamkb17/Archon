@@ -986,3 +986,77 @@ export function useKnowledgeCodeExamples(
     staleTime: STALE_TIMES.normal,
   });
 }
+
+/**
+ * Update crawler configuration for existing knowledge item
+ * Triggers a recrawl with the new configuration
+ */
+export function useUpdateCrawlConfig() {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation<
+    CrawlStartResponse,
+    Error,
+    {
+      sourceId: string;
+      url: string;
+      knowledge_type: "technical" | "business";
+      max_depth: number;
+      tags?: string[];
+      crawl_config?: any;
+    }
+  >({
+    mutationFn: (request) => knowledgeService.updateCrawlConfig(request),
+    onMutate: async ({ sourceId }) => {
+      // Update item status to processing in all caches
+      await queryClient.cancelQueries({ queryKey: knowledgeKeys.detail(sourceId) });
+      await queryClient.cancelQueries({ queryKey: knowledgeKeys.summariesPrefix() });
+
+      const previousItem = queryClient.getQueryData<KnowledgeItem>(knowledgeKeys.detail(sourceId));
+      const previousSummaries = queryClient.getQueriesData({ queryKey: knowledgeKeys.summariesPrefix() });
+
+      // Optimistically update status to processing
+      if (previousItem) {
+        queryClient.setQueryData<KnowledgeItem>(knowledgeKeys.detail(sourceId), {
+          ...previousItem,
+          status: "processing",
+        });
+      }
+
+      // Update summaries cache
+      queryClient.setQueriesData<KnowledgeItemsResponse>({ queryKey: knowledgeKeys.summariesPrefix() }, (old) => {
+        if (!old?.items) return old;
+        return {
+          ...old,
+          items: old.items.map((item) =>
+            item.source_id === sourceId ? { ...item, status: "processing" } : item
+          ),
+        };
+      });
+
+      return { previousItem, previousSummaries };
+    },
+    onSuccess: (response) => {
+      // Invalidate to get fresh data
+      queryClient.invalidateQueries({ queryKey: knowledgeKeys.summariesPrefix() });
+      queryClient.invalidateQueries({ queryKey: progressKeys.active() });
+
+      return response;
+    },
+    onError: (error, { sourceId }, context) => {
+      // Rollback on error
+      if (context?.previousItem) {
+        queryClient.setQueryData(knowledgeKeys.detail(sourceId), context.previousItem);
+      }
+      if (context?.previousSummaries) {
+        for (const [queryKey, data] of context.previousSummaries) {
+          queryClient.setQueryData(queryKey, data);
+        }
+      }
+
+      const errorMessage = error instanceof Error ? error.message : "Failed to update configuration";
+      showToast(errorMessage, "error");
+    },
+  });
+}

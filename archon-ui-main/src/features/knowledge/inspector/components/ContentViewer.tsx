@@ -143,9 +143,9 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ selectedItem, onCo
             </button>
 
             {showMetadata && (
-              <div className="px-4 pb-4 overflow-y-auto max-h-64">
-                <div className="bg-black/40 border border-white/10 rounded-lg p-4">
-                  <pre className="text-xs text-gray-400 font-mono whitespace-pre-wrap overflow-x-auto">
+              <div className="px-4 pb-4">
+                <div className="bg-black/40 border border-white/10 rounded-lg p-4 max-h-[500px] overflow-y-auto scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
+                  <pre className="text-xs text-gray-400 font-mono whitespace-pre-wrap break-words">
                     {JSON.stringify(selectedItem.metadata, null, 2)}
                   </pre>
                 </div>

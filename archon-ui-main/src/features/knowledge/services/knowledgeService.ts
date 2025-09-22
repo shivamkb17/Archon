@@ -230,4 +230,26 @@ export const knowledgeService = {
   async getKnowledgeSources(): Promise<KnowledgeSource[]> {
     return callAPIWithETag<KnowledgeSource[]>("/api/knowledge-items/sources");
   },
+
+  /**
+   * Update crawler configuration for an existing knowledge item
+   * This will trigger a recrawl with the new configuration
+   */
+  async updateCrawlConfig(request: {
+    sourceId: string;
+    url: string;
+    knowledge_type: "technical" | "business";
+    max_depth: number;
+    tags?: string[];
+    crawl_config?: any;
+  }): Promise<CrawlStartResponse> {
+    const { sourceId, ...crawlData } = request;
+
+    const response = await callAPIWithETag<CrawlStartResponse>(`/api/knowledge-items/${sourceId}/update-config`, {
+      method: "POST",
+      body: JSON.stringify(crawlData),
+    });
+
+    return response;
+  },
 };
