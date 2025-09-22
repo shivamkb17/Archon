@@ -83,13 +83,19 @@ export const EditCrawlConfigDialog: React.FC<EditCrawlConfigDialogProps> = ({
         item.metadata?.crawl_config ||
         {};
 
+      console.log("EditCrawlConfigDialog - Loading item:", item);
+      console.log("EditCrawlConfigDialog - Config value:", configValue);
+
       // Ensure the config has the right shape with proper defaults
-      setCrawlConfig({
+      const finalConfig = {
         allowed_domains: Array.isArray(configValue.allowed_domains) ? configValue.allowed_domains : [],
         excluded_domains: Array.isArray(configValue.excluded_domains) ? configValue.excluded_domains : [],
         include_patterns: Array.isArray(configValue.include_patterns) ? configValue.include_patterns : [],
         exclude_patterns: Array.isArray(configValue.exclude_patterns) ? configValue.exclude_patterns : []
-      });
+      };
+
+      console.log("EditCrawlConfigDialog - Setting config to:", finalConfig);
+      setCrawlConfig(finalConfig);
     }
   }, [item, open]);
 
@@ -100,14 +106,17 @@ export const EditCrawlConfigDialog: React.FC<EditCrawlConfigDialogProps> = ({
     }
 
     try {
-      await updateMutation.mutateAsync({
+      const updateData = {
         sourceId,
         url,
         knowledge_type: knowledgeType,
         max_depth: parseInt(maxDepth, 10),
         tags: tags.length > 0 ? tags : undefined,
         crawl_config: crawlConfig,
-      });
+      };
+
+      console.log("EditCrawlConfigDialog - Saving config:", updateData);
+      await updateMutation.mutateAsync(updateData);
 
       showToast("Configuration updated. Recrawl initiated.", "success");
       onSuccess?.();
@@ -147,8 +156,8 @@ export const EditCrawlConfigDialog: React.FC<EditCrawlConfigDialogProps> = ({
             </div>
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto px-6 -mx-6">
-            <div className="space-y-6 pb-6 pr-2">
+          <div className="flex-1 overflow-y-auto">
+            <div className="space-y-6 px-6 pb-6">
               {/* Warning Alert */}
               <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 flex gap-3">
                 <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
