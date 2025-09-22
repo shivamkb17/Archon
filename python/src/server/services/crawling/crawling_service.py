@@ -79,6 +79,7 @@ class CrawlingService:
         self.site_config = SiteConfig()
         self.markdown_generator = self.site_config.get_markdown_generator()
         self.link_pruning_markdown_generator = self.site_config.get_link_pruning_markdown_generator()
+        # DomainFilter doesn't need initialization params - it uses config passed to is_url_allowed
         self.domain_filter = DomainFilter()
 
         # Initialize strategies

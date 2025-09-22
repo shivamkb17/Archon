@@ -296,9 +296,29 @@ class RecursiveCrawlStrategy:
                             if next_url not in visited and not is_binary:
                                 # Apply domain filtering if configured
                                 if self.domain_filter and crawl_config:
-                                    base_url = start_urls[0] if start_urls else original_url
-                                    if not self.domain_filter.is_url_allowed(next_url, base_url, crawl_config):
-                                        logger.debug(f"Filtering URL based on domain rules: {next_url}")
+                                    # Use next_url's origin for domain checks, fallback to original_url
+                                    # This ensures we're checking against the appropriate domain
+                                    base_url = original_url
+                                    if len(start_urls) > 0:
+                                        # If we have start_urls, use the first one
+                                        base_url = start_urls[0]
+                                    else:
+                                        # Try to use the current page's URL as base
+                                        # This handles relative links better
+                                        try:
+                                            from urllib.parse import urljoin
+                                            base_url = urljoin(original_url, next_url)
+                                        except Exception:
+                                            base_url = original_url
+
+                                    # Wrap filter check in try/except to prevent crashes
+                                    try:
+                                        if not self.domain_filter.is_url_allowed(next_url, base_url, crawl_config):
+                                            logger.debug(f"Filtering URL based on domain rules: {next_url}")
+                                            continue
+                                    except Exception as e:
+                                        # Log error and conservatively skip the URL
+                                        logger.warning(f"Error checking domain filter for {next_url}: {str(e)}. Skipping URL.")
                                         continue
 
                                 if next_url not in next_level_urls:
