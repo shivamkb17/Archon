@@ -39,22 +39,45 @@ export const EditCrawlConfigDialog: React.FC<EditCrawlConfigDialogProps> = ({
   const [tags, setTags] = useState<string[]>([]);
   const [crawlConfig, setCrawlConfig] = useState<CrawlConfig>({});
 
+  // Reset form when dialog opens
+  useEffect(() => {
+    if (open && !item) {
+      // Reset to defaults while loading
+      setUrl("");
+      setKnowledgeType("technical");
+      setMaxDepth("2");
+      setTags([]);
+      setCrawlConfig({});
+    }
+  }, [open, item]);
+
   // Load existing configuration when item loads
   useEffect(() => {
-    if (item) {
+    if (item && open) {
       setUrl(item.url || "");
-      setKnowledgeType(item.knowledge_type || "technical");
-      // Access max_depth from metadata as any since it's not typed
-      const metadata = item.metadata as any;
-      setMaxDepth(metadata?.max_depth?.toString() || "2");
-      setTags(metadata?.tags || []);
+      setKnowledgeType(item.knowledge_type || item.metadata?.knowledge_type || "technical");
+
+      // Max depth might be at top level or in metadata
+      const depthValue = item.max_depth || item.metadata?.max_depth || 2;
+      setMaxDepth(depthValue.toString());
+
+      // Tags could be at top level or in metadata
+      const tagsValue = item.tags || item.metadata?.tags || [];
+      setTags(Array.isArray(tagsValue) ? tagsValue : []);
 
       // Load existing crawl config if available
-      if (metadata?.crawl_config) {
-        setCrawlConfig(metadata.crawl_config);
-      }
+      // It could be at top level or nested in metadata
+      const configValue = item.crawl_config || item.metadata?.crawl_config || {};
+
+      // Ensure the config has the right shape
+      setCrawlConfig({
+        allowed_domains: configValue.allowed_domains || [],
+        excluded_domains: configValue.excluded_domains || [],
+        include_patterns: configValue.include_patterns || [],
+        exclude_patterns: configValue.exclude_patterns || []
+      });
     }
-  }, [item]);
+  }, [item, open]);
 
   const handleSave = async () => {
     if (!url) {

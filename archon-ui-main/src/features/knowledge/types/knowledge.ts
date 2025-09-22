@@ -21,6 +21,9 @@ export interface KnowledgeItemMetadata {
   original_url?: string;
   document_count?: number; // Number of documents in this knowledge item
   code_examples_count?: number; // Number of code examples found
+  max_depth?: number; // Crawl depth configuration
+  crawl_config?: CrawlConfig; // Advanced crawl configuration
+  [key: string]: any; // Allow additional untyped fields from backend
 }
 
 export interface KnowledgeItem {
@@ -36,6 +39,10 @@ export interface KnowledgeItem {
   metadata: KnowledgeItemMetadata;
   created_at: string;
   updated_at: string;
+  // Additional fields that might be at top level
+  max_depth?: number;
+  tags?: string[];
+  crawl_config?: CrawlConfig;
 }
 
 export interface CodeExampleMetadata {
