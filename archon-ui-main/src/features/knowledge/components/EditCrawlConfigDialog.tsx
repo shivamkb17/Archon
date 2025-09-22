@@ -54,8 +54,9 @@ export const EditCrawlConfigDialog: React.FC<EditCrawlConfigDialogProps> = ({
   // Load existing configuration when item loads
   useEffect(() => {
     if (item && open) {
-      // URL is a required field in KnowledgeItem
-      setUrl(item.url || "");
+      // Use original_url if available (the actual crawled URL), otherwise fall back to url
+      const urlToEdit = item.metadata?.original_url || item.url || "";
+      setUrl(urlToEdit);
 
       // Knowledge type is also a required field
       setKnowledgeType(item.knowledge_type || "technical");
