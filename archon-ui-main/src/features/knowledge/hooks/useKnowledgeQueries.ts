@@ -15,6 +15,7 @@ import { useToast } from "../../ui/hooks/useToast";
 import { knowledgeService } from "../services";
 import type {
   CrawlRequest,
+  CrawlRequestV2,
   CrawlStartResponse,
   KnowledgeItem,
   KnowledgeItemsFilter,
@@ -293,6 +294,181 @@ export function useCrawlUrl() {
       }
 
       const errorMessage = getProviderErrorMessage(error) || "Failed to start crawl";
+      showToast(errorMessage, "error");
+    },
+  });
+}
+
+/**
+ * Crawl URL mutation with domain filtering (v2) with optimistic updates
+ * Returns the progressId that can be used to track crawl progress
+ */
+export function useCrawlUrlV2() {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation<
+    CrawlStartResponse,
+    Error,
+    CrawlRequestV2,
+    {
+      previousKnowledge?: KnowledgeItem[];
+      previousSummaries?: Array<[readonly unknown[], KnowledgeItemsResponse | undefined]>;
+      previousOperations?: ActiveOperationsResponse;
+      tempProgressId: string;
+      tempItemId: string;
+    }
+  >({
+    mutationFn: (request: CrawlRequestV2) => knowledgeService.crawlUrlV2(request),
+    onMutate: async (request) => {
+      // Cancel any outgoing refetches to prevent race conditions
+      await queryClient.cancelQueries({ queryKey: knowledgeKeys.summariesPrefix() });
+      await queryClient.cancelQueries({ queryKey: progressKeys.active() });
+
+      // Snapshot the previous values for rollback
+      const previousSummaries = queryClient.getQueriesData<KnowledgeItemsResponse>({
+        queryKey: knowledgeKeys.summariesPrefix(),
+      });
+      const previousOperations = queryClient.getQueryData<ActiveOperationsResponse>(progressKeys.active());
+
+      // Generate temporary progress ID and optimistic entity
+      const tempProgressId = createOptimisticId();
+      const optimisticItem = createOptimisticEntity<KnowledgeItem>({
+        title: (() => {
+          try {
+            return new URL(request.url).hostname || "New crawl";
+          } catch {
+            return "New crawl";
+          }
+        })(),
+        url: request.url,
+        source_id: tempProgressId,
+        source_type: "url",
+        knowledge_type: request.knowledge_type || "technical",
+        status: "processing",
+        document_count: 0,
+        code_examples_count: 0,
+        metadata: {
+          knowledge_type: request.knowledge_type || "technical",
+          tags: request.tags || [],
+          source_type: "url",
+          status: "processing",
+          description: `Crawling ${request.url} with domain filters`,
+          crawl_config: request.crawl_config,
+        },
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      } as Omit<KnowledgeItem, "id">);
+      const tempItemId = optimisticItem.id;
+
+      // Update all summaries caches with optimistic data
+      const entries = queryClient.getQueriesData<KnowledgeItemsResponse>({
+        queryKey: knowledgeKeys.summariesPrefix(),
+      });
+      for (const [qk, old] of entries) {
+        const filter = qk[qk.length - 1] as KnowledgeItemsFilter | undefined;
+        const matchesType = !filter?.knowledge_type || optimisticItem.knowledge_type === filter.knowledge_type;
+        const matchesTags =
+          !filter?.tags || filter.tags.every((t) => (optimisticItem.metadata?.tags ?? []).includes(t));
+        if (!(matchesType && matchesTags)) continue;
+        if (!old) {
+          queryClient.setQueryData<KnowledgeItemsResponse>(qk, {
+            items: [optimisticItem],
+            total: 1,
+            page: 1,
+            per_page: 100,
+          });
+        } else {
+          queryClient.setQueryData<KnowledgeItemsResponse>(qk, {
+            ...old,
+            items: [optimisticItem, ...old.items],
+            total: (old.total ?? old.items.length) + 1,
+          });
+        }
+      }
+
+      // Add optimistic progress entry
+      if (!previousOperations) {
+        queryClient.setQueryData<ActiveOperationsResponse>(progressKeys.active(), {
+          operations: [
+            {
+              operation_id: tempProgressId,
+              operation_type: "crawl",
+              status: "starting",
+              progress: 0,
+              message: `Starting crawl of ${request.url} with domain filtering`,
+              started_at: new Date().toISOString(),
+              progressId: tempProgressId,
+            } as ActiveOperation,
+          ],
+        });
+      } else {
+        queryClient.setQueryData<ActiveOperationsResponse>(progressKeys.active(), {
+          operations: [
+            {
+              operation_id: tempProgressId,
+              operation_type: "crawl",
+              status: "starting",
+              progress: 0,
+              message: `Starting crawl of ${request.url} with domain filtering`,
+              started_at: new Date().toISOString(),
+              progressId: tempProgressId,
+            } as ActiveOperation,
+            ...(previousOperations.operations || []),
+          ],
+        });
+      }
+
+      return { previousSummaries, previousOperations, tempProgressId, tempItemId };
+    },
+    onSuccess: async (response, _variables, context) => {
+      // Show success message
+      showToast("Crawl started with domain filtering", "success");
+
+      // Update the temporary progress ID with the real one
+      if (context) {
+        const activeOps = queryClient.getQueryData<ActiveOperationsResponse>(progressKeys.active());
+        if (activeOps) {
+          const updated = {
+            operations: activeOps.operations.map((op) =>
+              op.progressId === context.tempProgressId ? { ...op, progressId: response.progressId } : op,
+            ),
+          };
+          queryClient.setQueryData(progressKeys.active(), updated);
+        }
+
+        // Update item in all summaries caches
+        const entries = queryClient.getQueriesData<KnowledgeItemsResponse>({
+          queryKey: knowledgeKeys.summariesPrefix(),
+        });
+        for (const [qk, data] of entries) {
+          if (data) {
+            const updated = {
+              ...data,
+              items: data.items.map((item) =>
+                item.id === context.tempItemId ? { ...item, source_id: response.progressId } : item,
+              ),
+            };
+            queryClient.setQueryData(qk, updated);
+          }
+        }
+      }
+
+      // Return the response so caller can access progressId
+      return response;
+    },
+    onError: (error, _variables, context) => {
+      // Rollback optimistic updates on error
+      if (context?.previousSummaries) {
+        for (const [queryKey, data] of context.previousSummaries) {
+          queryClient.setQueryData(queryKey, data);
+        }
+      }
+      if (context?.previousOperations) {
+        queryClient.setQueryData(progressKeys.active(), context.previousOperations);
+      }
+
+      const errorMessage = getProviderErrorMessage(error) || "Failed to start crawl with filters";
       showToast(errorMessage, "error");
     },
   });

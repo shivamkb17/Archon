@@ -31,6 +31,7 @@ export const KnowledgeInspector: React.FC<KnowledgeInspectorProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedItem, setSelectedItem] = useState<InspectorSelectedItem | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [selectedDomains, setSelectedDomains] = useState<Set<string>>(new Set());
 
   // Reset view mode when item or initialTab changes
   useEffect(() => {
@@ -141,6 +142,7 @@ export const KnowledgeInspector: React.FC<KnowledgeInspectorProps> = ({
     setViewMode(mode);
     setSelectedItem(null);
     setSearchQuery("");
+    setSelectedDomains(new Set()); // Clear domain filter when switching modes
   }, []);
 
   return (
@@ -175,6 +177,8 @@ export const KnowledgeInspector: React.FC<KnowledgeInspectorProps> = ({
             hasNextPage={hasNextPage}
             onLoadMore={fetchNextPage}
             isFetchingNextPage={isFetchingNextPage}
+            selectedDomains={selectedDomains}
+            onDomainsChange={setSelectedDomains}
           />
 
           {/* Content Viewer */}

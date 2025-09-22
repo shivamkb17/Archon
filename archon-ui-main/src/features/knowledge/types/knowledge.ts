@@ -133,6 +133,13 @@ export interface KnowledgeItemsFilter {
   per_page?: number;
 }
 
+export interface CrawlConfig {
+  allowed_domains?: string[];
+  excluded_domains?: string[];
+  include_patterns?: string[];
+  exclude_patterns?: string[];
+}
+
 export interface CrawlRequest {
   url: string;
   knowledge_type?: "technical" | "business";
@@ -140,6 +147,10 @@ export interface CrawlRequest {
   update_frequency?: number;
   max_depth?: number;
   extract_code_examples?: boolean;
+}
+
+export interface CrawlRequestV2 extends CrawlRequest {
+  crawl_config?: CrawlConfig;
 }
 
 export interface UploadMetadata {

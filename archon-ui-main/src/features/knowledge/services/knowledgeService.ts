@@ -9,6 +9,7 @@ import type {
   ChunksResponse,
   CodeExamplesResponse,
   CrawlRequest,
+  CrawlRequestV2,
   CrawlStartResponse,
   KnowledgeItem,
   KnowledgeItemsFilter,
@@ -82,6 +83,18 @@ export const knowledgeService = {
    */
   async crawlUrl(request: CrawlRequest): Promise<CrawlStartResponse> {
     const response = await callAPIWithETag<CrawlStartResponse>("/api/knowledge-items/crawl", {
+      method: "POST",
+      body: JSON.stringify(request),
+    });
+
+    return response;
+  },
+
+  /**
+   * Start crawling a URL with domain filtering (v2)
+   */
+  async crawlUrlV2(request: CrawlRequestV2): Promise<CrawlStartResponse> {
+    const response = await callAPIWithETag<CrawlStartResponse>("/api/knowledge-items/crawl-v2", {
       method: "POST",
       body: JSON.stringify(request),
     });

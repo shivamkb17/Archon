@@ -29,6 +29,7 @@ from ..services.search.rag_service import RAGService
 from ..services.storage import DocumentStorageService
 from ..utils import get_supabase_client
 from ..utils.document_processing import extract_text_from_document
+from ..utils.progress.progress_tracker import ProgressTracker
 
 # Get logger for this module
 logger = get_logger(__name__)
@@ -853,6 +854,135 @@ async def _perform_crawl_with_progress(
                 safe_logfire_info(
                     f"Cleaned up crawl task from registry | progress_id={progress_id}"
                 )
+
+
+@router.post("/knowledge-items/crawl-v2")
+async def crawl_knowledge_item_v2(request: dict):
+    """
+    Crawl a URL with advanced domain filtering configuration.
+
+    This is version 2 of the crawl endpoint that supports domain filtering.
+    """
+    # Import CrawlRequestV2 model
+    from ..models.crawl_models import CrawlRequestV2, CrawlConfig
+
+    # Parse and validate request
+    crawl_request = CrawlRequestV2(**request)
+
+    # Validate API key before starting expensive operation
+    logger.info("🔍 About to validate API key for crawl-v2...")
+    provider_config = await credential_service.get_active_provider("embedding")
+    provider = provider_config.get("provider", "openai")
+    await _validate_provider_api_key(provider)
+    logger.info("✅ API key validation completed successfully")
+
+    try:
+        safe_logfire_info(
+            f"Starting knowledge item crawl v2 | url={crawl_request.url} | "
+            f"knowledge_type={crawl_request.knowledge_type} | "
+            f"has_crawl_config={crawl_request.crawl_config is not None}"
+        )
+
+        # Generate unique progress ID
+        progress_id = str(uuid.uuid4())
+
+        # Create progress tracker for HTTP polling
+        tracker = ProgressTracker(progress_id, operation_type="crawl")
+        await tracker.start({
+            "status": "starting",
+            "url": crawl_request.url,
+            "has_filters": crawl_request.crawl_config is not None
+        })
+
+        # Create async task for crawling
+        crawl_task = asyncio.create_task(_run_crawl_v2(request_dict=crawl_request.dict(), progress_id=progress_id))
+        active_crawl_tasks[progress_id] = crawl_task
+
+        safe_logfire_info(
+            f"Crawl v2 task created | progress_id={progress_id} | url={crawl_request.url}"
+        )
+
+        return {
+            "success": True,
+            "progressId": progress_id,
+            "message": "Crawl started with domain filtering",
+            "estimatedDuration": "2-10 minutes depending on site size"
+        }
+
+    except Exception as e:
+        safe_logfire_error(f"Failed to start crawl v2 | error={str(e)}")
+        raise HTTPException(status_code=500, detail={"error": str(e)})
+
+
+async def _run_crawl_v2(request_dict: dict, progress_id: str):
+    """Run the crawl v2 with domain filtering in background."""
+    tracker = ProgressTracker(progress_id, operation_type="crawl")
+
+    try:
+        safe_logfire_info(
+            f"Starting crawl v2 with progress tracking | progress_id={progress_id} | url={request_dict['url']}"
+        )
+
+        # Get crawler from CrawlerManager
+        try:
+            crawler = await get_crawler()
+            if crawler is None:
+                raise Exception("Crawler not available - initialization may have failed")
+        except Exception as e:
+            safe_logfire_error(f"Failed to get crawler | error={str(e)}")
+            await tracker.error(f"Failed to initialize crawler: {str(e)}")
+            return
+
+        supabase_client = get_supabase_client()
+
+        # Extract crawl_config if present
+        crawl_config_dict = request_dict.get("crawl_config")
+        crawl_config = None
+        if crawl_config_dict:
+            from ..models.crawl_models import CrawlConfig
+            crawl_config = CrawlConfig(**crawl_config_dict)
+
+        # Create orchestration service with crawl_config
+        orchestration_service = CrawlingService(
+            crawler,
+            supabase_client,
+            crawl_config=crawl_config
+        )
+        orchestration_service.set_progress_id(progress_id)
+
+        # Add crawl_config to metadata for storage
+        if crawl_config:
+            request_dict["metadata"] = request_dict.get("metadata", {})
+            request_dict["metadata"]["crawl_config"] = crawl_config.dict()
+
+        # Orchestrate the crawl - this returns immediately with task info
+        result = await orchestration_service.orchestrate_crawl(request_dict)
+
+        # Store the actual crawl task for proper cancellation
+        crawl_task = result.get("task")
+        if crawl_task:
+            active_crawl_tasks[progress_id] = crawl_task
+            safe_logfire_info(
+                f"Stored actual crawl v2 task in active_crawl_tasks | progress_id={progress_id}"
+            )
+        else:
+            safe_logfire_error(f"No task returned from orchestrate_crawl v2 | progress_id={progress_id}")
+
+        safe_logfire_info(
+            f"Crawl v2 task started | progress_id={progress_id} | task_id={result.get('task_id')}"
+        )
+
+    except asyncio.CancelledError:
+        safe_logfire_info(f"Crawl v2 cancelled | progress_id={progress_id}")
+        raise
+    except Exception as e:
+        safe_logfire_error(f"Crawl v2 task failed | progress_id={progress_id} | error={str(e)}")
+        await tracker.error(str(e))
+    finally:
+        # Clean up task from registry when done
+        if progress_id in active_crawl_tasks:
+            del active_crawl_tasks[progress_id]
+            safe_logfire_info(f"Cleaned up crawl v2 task from registry | progress_id={progress_id}")
 
 
 @router.post("/documents/upload")

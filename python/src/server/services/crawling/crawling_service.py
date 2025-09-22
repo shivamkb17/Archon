@@ -12,12 +12,14 @@ from collections.abc import Awaitable, Callable
 from typing import Any, Optional
 
 from ...config.logfire_config import get_logger, safe_logfire_error, safe_logfire_info
+from ...models.crawl_models import CrawlConfig
 from ...utils import get_supabase_client
 from ...utils.progress.progress_tracker import ProgressTracker
 
 # Import strategies
 # Import operations
 from .document_storage_operations import DocumentStorageOperations
+from .domain_filter import DomainFilter
 from .helpers.site_config import SiteConfig
 
 # Import helpers
@@ -56,7 +58,7 @@ class CrawlingService:
     Combines functionality from both CrawlingService and CrawlOrchestrationService.
     """
 
-    def __init__(self, crawler=None, supabase_client=None, progress_id=None):
+    def __init__(self, crawler=None, supabase_client=None, progress_id=None, crawl_config=None):
         """
         Initialize the crawling service.
 
@@ -64,21 +66,24 @@ class CrawlingService:
             crawler: The Crawl4AI crawler instance
             supabase_client: The Supabase client for database operations
             progress_id: Optional progress ID for HTTP polling updates
+            crawl_config: Optional CrawlConfig for domain filtering
         """
         self.crawler = crawler
         self.supabase_client = supabase_client or get_supabase_client()
         self.progress_id = progress_id
         self.progress_tracker = None
+        self.crawl_config = crawl_config
 
         # Initialize helpers
         self.url_handler = URLHandler()
         self.site_config = SiteConfig()
         self.markdown_generator = self.site_config.get_markdown_generator()
         self.link_pruning_markdown_generator = self.site_config.get_link_pruning_markdown_generator()
+        self.domain_filter = DomainFilter()
 
         # Initialize strategies
         self.batch_strategy = BatchCrawlStrategy(crawler, self.link_pruning_markdown_generator)
-        self.recursive_strategy = RecursiveCrawlStrategy(crawler, self.link_pruning_markdown_generator)
+        self.recursive_strategy = RecursiveCrawlStrategy(crawler, self.link_pruning_markdown_generator, self.domain_filter)
         self.single_page_strategy = SinglePageCrawlStrategy(crawler, self.markdown_generator)
         self.sitemap_strategy = SitemapCrawlStrategy()
 
@@ -225,6 +230,7 @@ class CrawlingService:
             max_concurrent,
             progress_callback,
             self._check_cancellation,  # Pass cancellation check
+            self.crawl_config,  # Pass crawl config for domain filtering
         )
 
     # Orchestration methods
