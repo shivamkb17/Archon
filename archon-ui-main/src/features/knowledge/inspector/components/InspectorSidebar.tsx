@@ -73,6 +73,7 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
       return extractDomain(url) === selectedDomain;
     });
   }, [items, selectedDomain, viewMode]);
+
   const getItemTitle = (item: DocumentChunk | CodeExample) => {
     const idSuffix = String(item.id).slice(-6);
     if (viewMode === "documents") {
@@ -164,101 +165,109 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
         ) : (
           <div className="p-2">
             {filteredItems.map((item) => (
-              <motion.button
-                type="button"
-                key={item.id}
-                whileHover={{ x: 2 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => onItemSelect(item)}
-                className={cn(
-                  "w-full text-left p-3 rounded-lg mb-1 transition-all",
-                  "hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-cyan-500/50",
-                  selectedItemId === item.id
-                    ? "bg-cyan-500/10 border border-cyan-500/30 ring-1 ring-cyan-500/20"
-                    : "border border-transparent",
-                )}
-                role="option"
-                aria-selected={selectedItemId === item.id}
-                aria-label={`${getItemTitle(item)}. ${getItemDescription(item)}`}
-              >
-                <div className="flex items-start gap-3">
-                  {/* Icon - Fixed size */}
-                  <div className="mt-0.5 flex-shrink-0" aria-hidden="true">
-                    {viewMode === "documents" ? (
-                      <FileText className="w-4 h-4 text-cyan-400" />
-                    ) : (
-                      <Code className="w-4 h-4 text-green-400" />
-                    )}
-                  </div>
-
-                  {/* Content - Can shrink with proper overflow */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1 min-w-0">
-                      <span className="text-sm font-medium text-white/90 truncate flex-1" title={getItemTitle(item)}>
-                        {getItemTitle(item)}
-                      </span>
-                      {viewMode === "code" && (item as CodeExample).language && (
-                        <span className="px-1.5 py-0.5 bg-green-500/10 text-green-400 text-xs rounded flex-shrink-0">
-                          {(item as CodeExample).language}
-                        </span>
+              <div key={item.id} className="mb-1">
+                <motion.div
+                  whileHover={{ x: 2 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => onItemSelect(item)}
+                  className={cn(
+                    "w-full text-left p-3 rounded-lg transition-all cursor-pointer",
+                    "hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-cyan-500/50",
+                    selectedItemId === item.id
+                      ? "bg-cyan-500/10 border border-cyan-500/30 ring-1 ring-cyan-500/20"
+                      : "border border-transparent",
+                  )}
+                  role="option"
+                  aria-selected={selectedItemId === item.id}
+                  aria-label={`${getItemTitle(item)}. ${getItemDescription(item)}`}
+                >
+                  <div className="flex items-start gap-3">
+                    {/* Icon - Fixed size */}
+                    <div className="mt-0.5 flex-shrink-0" aria-hidden="true">
+                      {viewMode === "documents" ? (
+                        <FileText className="w-4 h-4 text-cyan-400" />
+                      ) : (
+                        <Code className="w-4 h-4 text-green-400" />
                       )}
                     </div>
-                    <p className="text-xs text-gray-500 line-clamp-2" title={getItemDescription(item)}>
-                      {getItemDescription(item)}
-                    </p>
 
-                    {/* Action buttons for documents */}
-                    {viewMode === "documents" && (
-                      <div className="flex items-center gap-1 mt-1">
-                        {(item as DocumentChunk).url && (
-                          <a
-                            href={(item as DocumentChunk).url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-gray-500 hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors flex items-center gap-1"
-                            title="View source"
-                          >
-                            <ExternalLink className="w-3 h-3" />
-                            View Source
-                          </a>
+                    {/* Content - Can shrink with proper overflow */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 min-w-0">
+                        <span className="text-sm font-medium text-white/90 truncate flex-1" title={getItemTitle(item)}>
+                          {getItemTitle(item)}
+                        </span>
+                        {viewMode === "code" && (item as CodeExample).language && (
+                          <span className="px-1.5 py-0.5 bg-green-500/10 text-green-400 text-xs rounded flex-shrink-0">
+                            {(item as CodeExample).language}
+                          </span>
                         )}
-                        {(item as DocumentChunk).metadata && (
-                          <button
-                            type="button"
+                      </div>
+                      <p className="text-xs text-gray-500 line-clamp-2" title={getItemDescription(item)}>
+                        {getItemDescription(item)}
+                      </p>
+
+                      {/* Action buttons for documents */}
+                      {viewMode === "documents" && (
+                        <div className="flex items-center gap-1 mt-1">
+                          {(item as DocumentChunk).url && (
+                            <a
+                              href={(item as DocumentChunk).url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-gray-500 hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors flex items-center gap-1"
+                              title="View source"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              Source
+                            </a>
+                          )}
+                          <div
                             onClick={(e) => {
                               e.stopPropagation();
-                              setShowMetadata(showMetadata === item.id ? null : String(item.id));
+                              setShowMetadata(showMetadata === String(item.id) ? null : String(item.id));
                             }}
-                            className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-gray-500 hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors flex items-center gap-1"
-                            title="View metadata"
+                            className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-gray-500 hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors cursor-pointer"
+                            title="Toggle metadata"
                           >
                             <Info className="w-3 h-3" />
-                            Metadata
-                          </button>
-                        )}
-                      </div>
-                    )}
+                            {showMetadata === String(item.id) ? "Hide" : "Show"} Meta
+                          </div>
+                        </div>
+                      )}
 
-                    {/* Metadata panel */}
-                    {showMetadata === item.id && (item as DocumentChunk).metadata && (
-                      <div className="mt-2 p-2 bg-black/30 rounded text-[10px] text-gray-400 font-mono">
-                        <pre className="whitespace-pre-wrap overflow-x-auto">
-                          {JSON.stringify((item as DocumentChunk).metadata, null, 2)}
-                        </pre>
-                      </div>
-                    )}
-                    {item.metadata?.relevance_score != null && (
-                      <div className="flex items-center gap-1 mt-1">
-                        <Hash className="w-3 h-3 text-gray-600" aria-hidden="true" />
-                        <span className="text-xs text-gray-600">
-                          {(item.metadata.relevance_score * 100).toFixed(0)}%
-                        </span>
-                      </div>
-                    )}
+                      {item.metadata?.relevance_score != null && (
+                        <div className="flex items-center gap-1 mt-1">
+                          <Hash className="w-3 h-3 text-gray-600" aria-hidden="true" />
+                          <span className="text-xs text-gray-600">
+                            {(item.metadata.relevance_score * 100).toFixed(0)}%
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </motion.button>
+                </motion.div>
+
+                {/* Metadata panel - Outside clickable area */}
+                {showMetadata === String(item.id) && viewMode === "documents" && (item as DocumentChunk).metadata && (
+                  <div className="mt-1 ml-7 mr-3 p-2 bg-black/40 border border-white/10 rounded text-[10px] text-gray-400 font-mono">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-cyan-400">Metadata:</span>
+                      <button
+                        type="button"
+                        onClick={() => setShowMetadata(null)}
+                        className="text-gray-500 hover:text-white text-sm"
+                      >
+                        ×
+                      </button>
+                    </div>
+                    <pre className="whitespace-pre-wrap overflow-x-auto max-h-48 overflow-y-auto">
+                      {JSON.stringify((item as DocumentChunk).metadata, null, 2)}
+                    </pre>
+                  </div>
+                )}
+              </div>
             ))}
 
             {/* Load More Button */}
@@ -280,7 +289,7 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
                   ) : (
                     <>
                       <span>Load More {viewMode}</span>
-                      <span className="sr-only">. Press to load additional items.</span>
+                      <span className="sr-only"> Press to load additional items.</span>
                     </>
                   )}
                 </Button>
