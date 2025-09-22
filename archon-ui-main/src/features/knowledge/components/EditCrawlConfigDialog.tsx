@@ -121,7 +121,10 @@ export const EditCrawlConfigDialog: React.FC<EditCrawlConfigDialogProps> = ({
   const isProcessing = updateMutation.isPending;
 
   return (
-    <div onClick={(e) => e.stopPropagation()}>
+    <div
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+    >
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader className="flex-shrink-0 pb-2">

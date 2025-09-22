@@ -4,7 +4,7 @@
  */
 
 import { ChevronDown, Info, Plus, X } from "lucide-react";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import type { CrawlConfig } from "../types";
 
 interface Props {
@@ -73,6 +73,13 @@ export const AdvancedCrawlConfig: React.FC<Props> = ({ config, onChange }) => {
     (config.excluded_domains && config.excluded_domains.length > 0) ||
     (config.include_patterns && config.include_patterns.length > 0) ||
     (config.exclude_patterns && config.exclude_patterns.length > 0);
+
+  // Auto-expand when there's existing configuration
+  useEffect(() => {
+    if (hasAnyConfig && !isExpanded) {
+      setIsExpanded(true);
+    }
+  }, [hasAnyConfig]);
 
   return (
     <div className="border border-gray-800 rounded-lg bg-gray-900/50 backdrop-blur-sm">
