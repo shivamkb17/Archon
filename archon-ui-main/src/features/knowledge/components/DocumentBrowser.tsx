@@ -53,7 +53,7 @@ export const DocumentBrowser: React.FC<DocumentBrowserProps> = ({ sourceId, open
   }, [chunks]);
 
   // Filter chunks based on search and domain
-  const filteredChunks = chunks.filter((chunk) => {
+  const filteredChunks = useMemo(() => chunks.filter((chunk) => {
     // Search filter
     const matchesSearch =
       !searchQuery ||
@@ -65,17 +65,17 @@ export const DocumentBrowser: React.FC<DocumentBrowserProps> = ({ sourceId, open
     const matchesDomain = selectedDomains.size === 0 || (url && selectedDomains.has(extractDomain(url)));
 
     return matchesSearch && matchesDomain;
-  });
+  }), [chunks, searchQuery, selectedDomains]);
 
   // Filter code examples based on search
-  const filteredCode = codeExamples.filter((example) => {
+  const filteredCode = useMemo(() => codeExamples.filter((example) => {
     const codeContent = example.code || example.content || "";
     return (
       codeContent.toLowerCase().includes(searchQuery.toLowerCase()) ||
       example.summary?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       example.language?.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  });
+  }), [codeExamples, searchQuery]);
 
   const toggleChunk = (chunkId: string) => {
     setExpandedChunks((prev) => {

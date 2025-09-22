@@ -83,7 +83,7 @@ class CrawlingService:
         self.domain_filter = DomainFilter()
 
         # Initialize strategies
-        self.batch_strategy = BatchCrawlStrategy(crawler, self.link_pruning_markdown_generator)
+        self.batch_strategy = BatchCrawlStrategy(crawler, self.link_pruning_markdown_generator, self.domain_filter)
         self.recursive_strategy = RecursiveCrawlStrategy(crawler, self.link_pruning_markdown_generator, self.domain_filter)
         self.single_page_strategy = SinglePageCrawlStrategy(crawler, self.markdown_generator)
         self.sitemap_strategy = SitemapCrawlStrategy()
@@ -213,6 +213,7 @@ class CrawlingService:
             max_concurrent,
             progress_callback,
             self._check_cancellation,  # Pass cancellation check
+            self.crawl_config,  # Pass crawl_config for domain filtering
         )
 
     async def crawl_recursive_with_progress(
@@ -299,6 +300,13 @@ class CrawlingService:
         try:
             url = str(request.get("url", ""))
             safe_logfire_info(f"Starting async crawl orchestration | url={url} | task_id={task_id}")
+
+            # Ensure crawl_config is available for strategies
+            if self.crawl_config is None and "crawl_config" in request:
+                self.crawl_config = request.get("crawl_config")
+                safe_logfire_info(
+                    f"Crawl config attached | has_config={bool(self.crawl_config)}"
+                )
 
             # Start the progress tracker if available
             if self.progress_tracker:

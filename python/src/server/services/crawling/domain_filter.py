@@ -56,12 +56,15 @@ class DomainFilter:
                 full_url = url
 
             # Remove www. prefix for consistent matching
-            normalized_domain = domain.replace("www.", "")
+            # Strip leading www. only (not from middle of domain)
+            normalized_domain = domain
+            if normalized_domain.startswith("www."):
+                normalized_domain = normalized_domain[4:]
 
             # PRIORITY 1: Blacklist always wins
             if config.excluded_domains:
                 for excluded in config.excluded_domains:
-                    if self._matches_domain(normalized_domain, excluded):
+                    if self._matches_domain(normalized_domain, excluded.lower()):
                         logger.debug(f"URL blocked by excluded domain | url={url} | domain={normalized_domain} | excluded={excluded}")
                         return False
 
@@ -69,7 +72,7 @@ class DomainFilter:
             if config.allowed_domains:
                 allowed = False
                 for allowed_domain in config.allowed_domains:
-                    if self._matches_domain(normalized_domain, allowed_domain):
+                    if self._matches_domain(normalized_domain, allowed_domain.lower()):
                         allowed = True
                         break
 
@@ -115,14 +118,25 @@ class DomainFilter:
 
         Args:
             domain: The domain to check (already normalized and lowercase)
-            pattern: The pattern to match against (already normalized and lowercase)
+            pattern: The pattern to match against
 
         Returns:
             True if the domain matches the pattern
         """
+        # Normalize inputs
+        domain = (domain or "").lower()
+        pattern = (pattern or "").lower()
+
         # Remove any remaining protocol or path from pattern
         pattern = pattern.replace("http://", "").replace("https://", "").split("/")[0]
-        pattern = pattern.replace("www.", "")  # Remove www. for consistent matching
+        # Drop port if present on pattern (e.g., example.com:8080)
+        pattern = pattern.split(":", 1)[0]
+        # Strip leading www. only
+        if pattern.startswith("www."):
+            pattern = pattern[4:]
+
+        # Drop port from domain defensively
+        domain = domain.split(":", 1)[0]
 
         # Exact match
         if domain == pattern:

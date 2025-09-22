@@ -14,6 +14,7 @@ import { useSmartPolling } from "../../ui/hooks";
 import { useToast } from "../../ui/hooks/useToast";
 import { knowledgeService } from "../services";
 import type {
+  CrawlConfig,
   CrawlRequest,
   CrawlRequestV2,
   CrawlStartResponse,
@@ -1012,7 +1013,7 @@ export function useUpdateCrawlConfig() {
       knowledge_type: "technical" | "business";
       max_depth: number;
       tags?: string[];
-      crawl_config?: any;
+      crawl_config?: CrawlConfig;
     }
   >({
     mutationFn: (request) => knowledgeService.updateCrawlConfig(request),

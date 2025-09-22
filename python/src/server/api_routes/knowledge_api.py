@@ -20,6 +20,8 @@ from pydantic import BaseModel
 
 # Import unified logging
 from ..config.logfire_config import get_logger, safe_logfire_error, safe_logfire_info
+# Import crawl models for type validation
+from ..models.crawl_models import CrawlRequestV2
 from ..services.crawler_manager import get_crawler
 from ..services.crawling import CrawlingService
 from ..services.credential_service import credential_service
@@ -575,7 +577,7 @@ async def get_knowledge_item_code_examples(
 
 
 @router.post("/knowledge-items/{source_id}/update-config")
-async def update_crawl_config(source_id: str, request: dict):
+async def update_crawl_config(source_id: str, request: CrawlRequestV2):
     """
     Update crawler configuration for an existing knowledge item and trigger a recrawl.
 
@@ -586,8 +588,6 @@ async def update_crawl_config(source_id: str, request: dict):
     - Tags
     - Advanced crawl configuration (domain filters, patterns, etc.)
     """
-    # Import CrawlRequestV2 and CrawlConfig models
-    from ..models.crawl_models import CrawlRequestV2, CrawlConfig
 
     # Validate API key before starting expensive operation
     logger.info("🔍 About to validate API key for config update...")
@@ -608,8 +608,8 @@ async def update_crawl_config(source_id: str, request: dict):
                 status_code=404, detail={"error": f"Knowledge item {source_id} not found"}
             )
 
-        # Parse request into CrawlRequestV2 for validation
-        crawl_request = CrawlRequestV2(**request)
+        # Use the validated request directly
+        crawl_request = request
 
         # Generate unique progress ID for the recrawl
         progress_id = str(uuid.uuid4())
@@ -937,17 +937,14 @@ async def _perform_crawl_with_progress(
 
 
 @router.post("/knowledge-items/crawl-v2")
-async def crawl_knowledge_item_v2(request: dict):
+async def crawl_knowledge_item_v2(request: CrawlRequestV2):
     """
     Crawl a URL with advanced domain filtering configuration.
 
     This is version 2 of the crawl endpoint that supports domain filtering.
     """
-    # Import CrawlRequestV2 model
-    from ..models.crawl_models import CrawlRequestV2, CrawlConfig
-
-    # Parse and validate request
-    crawl_request = CrawlRequestV2(**request)
+    # Use the validated request directly
+    crawl_request = request
 
     # Validate API key before starting expensive operation
     logger.info("🔍 About to validate API key for crawl-v2...")

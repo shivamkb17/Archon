@@ -8,6 +8,7 @@ import { APIServiceError } from "../../shared/errors";
 import type {
   ChunksResponse,
   CodeExamplesResponse,
+  CrawlConfig,
   CrawlRequest,
   CrawlRequestV2,
   CrawlStartResponse,
@@ -241,7 +242,7 @@ export const knowledgeService = {
     knowledge_type: "technical" | "business";
     max_depth: number;
     tags?: string[];
-    crawl_config?: any;
+    crawl_config?: CrawlConfig;
   }): Promise<CrawlStartResponse> {
     const { sourceId, ...crawlData } = request;
 
