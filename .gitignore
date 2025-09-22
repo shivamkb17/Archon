@@ -9,6 +9,7 @@ PRPs/stories/
 .zed
 tmp/
 temp/
+.DS_Store
 UAT/
 
 .DS_Store
