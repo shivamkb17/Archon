@@ -150,41 +150,41 @@ export interface KnowledgeItemsFilter {
  * 4. include_patterns - If specified, only matching patterns are crawled
  *
  * Pattern Syntax:
- * - Domain patterns: Support wildcards (*.example.com) and exact matches
- * - URL patterns: Use glob syntax with fnmatch (*, ?, [seq], [!seq])
+ * - Domain patterns: Support wildcards ([star].example.com) and exact matches
+ * - URL patterns: Use glob syntax with fnmatch ([star], ?, [seq], [!seq])
  *
  * Common Examples:
  *
  * Example 1 - Crawl only docs subdomain, excluding API references:
  *   allowed_domains: ["docs.example.com"]
- *   exclude_patterns: ["*\/api-reference\/*", "*\/deprecated\/*"]
+ *   exclude_patterns: [[star]/api-reference/[star], [star]/deprecated/[star]]
  *
  * Example 2 - Crawl all subdomains except blog, only documentation paths:
- *   allowed_domains: ["*.example.com"]
+ *   allowed_domains: [[star].example.com]
  *   excluded_domains: ["blog.example.com"]
- *   include_patterns: ["*\/docs\/*", "*\/guide\/*", "*\/tutorial\/*"]
+ *   include_patterns: [[star]/docs/[star], [star]/guide/[star], [star]/tutorial/[star]]
  *
  * Example 3 - Block specific file types across all domains:
- *   exclude_patterns: ["*.pdf", "*.zip", "*\/downloads\/*"]
+ *   exclude_patterns: [[star].pdf, [star].zip, [star]/downloads/[star]]
  */
 export interface CrawlConfig {
   /**
    * Whitelist of domains to crawl. Supports exact matches and wildcards.
-   * Examples: ["docs.example.com", "*.example.com", "api.example.com"]
+   * Examples: docs.example.com, [star].example.com, api.example.com
    * If specified, ONLY these domains will be crawled (unless blocked by excluded_domains).
    */
   allowed_domains?: string[];
 
   /**
    * Blacklist of domains to never crawl. Takes precedence over allowed_domains.
-   * Examples: ["blog.example.com", "*.internal.example.com"]
+   * Examples: blog.example.com, [star].internal.example.com
    * These domains are ALWAYS blocked, even if they match allowed_domains.
    */
   excluded_domains?: string[];
 
   /**
    * URL patterns that must match for pages to be crawled. Uses glob syntax.
-   * Examples: ["*/docs/*", "*/api/v2/*", "*tutorial*"]
+   * Examples: [star]/docs/[star], [star]/api/v2/[star], [star]tutorial[star]
    * If specified, ONLY URLs matching at least one pattern will be crawled.
    * Patterns are matched against the full URL.
    */
@@ -192,7 +192,7 @@ export interface CrawlConfig {
 
   /**
    * URL patterns to exclude from crawling. Uses glob syntax. Takes precedence over include_patterns.
-   * Examples: ["*/admin/*", "*.pdf", "*/temp/*", "*test*"]
+   * Examples: [star]/admin/[star], [star].pdf, [star]/temp/[star], [star]test[star]
    * URLs matching these patterns are ALWAYS blocked.
    * Patterns are matched against the full URL.
    */
