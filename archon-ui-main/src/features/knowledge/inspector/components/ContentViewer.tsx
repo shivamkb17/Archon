@@ -107,34 +107,6 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ selectedItem, onCo
 
       {/* Main Content Area with Metadata Panel */}
       <div className="flex-1 flex flex-col min-h-0">
-        {/* Metadata Section - Always visible as collapsible */}
-        {selectedItem.metadata && Object.keys(selectedItem.metadata).length > 0 && (
-          <div className="border-b border-white/10 flex-shrink-0">
-            <button
-              type="button"
-              onClick={() => setShowMetadata(!showMetadata)}
-              className="w-full px-4 py-3 flex items-center gap-2 text-sm font-medium text-cyan-400 hover:bg-white/5 transition-colors text-left"
-            >
-              {showMetadata ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-              <Info className="w-4 h-4" />
-              Metadata
-              <span className="ml-auto text-xs text-gray-500">
-                {Object.keys(selectedItem.metadata).length} properties
-              </span>
-            </button>
-
-            {showMetadata && (
-              <div className="px-4 pb-4">
-                <div className="bg-black/40 border border-white/10 rounded-lg p-4 max-h-48 overflow-y-auto">
-                  <pre className="text-xs text-gray-400 font-mono whitespace-pre-wrap overflow-x-auto">
-                    {JSON.stringify(selectedItem.metadata, null, 2)}
-                  </pre>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Content Body */}
         <div className="flex-1 overflow-y-auto min-h-0 p-6 scrollbar-thin">
           {selectedItem.type === "document" ? (
@@ -153,6 +125,34 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ selectedItem, onCo
             </div>
           )}
         </div>
+
+        {/* Metadata Section - Always visible as collapsible at bottom */}
+        {selectedItem.metadata && Object.keys(selectedItem.metadata).length > 0 && (
+          <div className="border-t border-white/10 flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowMetadata(!showMetadata)}
+              className="w-full px-4 py-3 flex items-center gap-2 text-sm font-medium text-cyan-400 hover:bg-white/5 transition-colors text-left"
+            >
+              {showMetadata ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+              <Info className="w-4 h-4" />
+              Metadata
+              <span className="ml-auto text-xs text-gray-500">
+                {Object.keys(selectedItem.metadata).length} properties
+              </span>
+            </button>
+
+            {showMetadata && (
+              <div className="px-4 pb-4 overflow-y-auto max-h-64">
+                <div className="bg-black/40 border border-white/10 rounded-lg p-4">
+                  <pre className="text-xs text-gray-400 font-mono whitespace-pre-wrap overflow-x-auto">
+                    {JSON.stringify(selectedItem.metadata, null, 2)}
+                  </pre>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Content Footer - Show quick info */}
