@@ -1,7 +1,20 @@
 import { useState, useEffect } from "react";
-import { Loader, Settings, ChevronDown, Palette, Key, Brain, Code, FileCode, Bug } from "lucide-react";
+import {
+  Loader,
+  Settings,
+  ChevronDown,
+  ChevronUp,
+  Palette,
+  Key,
+  Brain,
+  Code,
+  FileCode,
+  Bug,
+  Info,
+  Database,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useToast } from "../features/ui/hooks/useToast";
+import { useToast } from "../features/shared/hooks/useToast";
 import { useSettings } from "../contexts/SettingsContext";
 import { useStaggeredEntrance } from "../hooks/useStaggeredEntrance";
 import { FeaturesSection } from "../components/settings/FeaturesSection";
@@ -17,6 +30,9 @@ import {
   RagSettings,
   CodeExtractionSettings as CodeExtractionSettingsType,
 } from "../services/credentialsService";
+import { UpdateBanner } from "../features/settings/version/components/UpdateBanner";
+import { VersionStatusCard } from "../features/settings/version/components/VersionStatusCard";
+import { MigrationStatusCard } from "../features/settings/migrations/components/MigrationStatusCard";
 
 export const SettingsPage = () => {
   const [ragSettings, setRagSettings] = useState<RagSettings>({
@@ -45,15 +61,6 @@ export const SettingsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showButtonPlayground, setShowButtonPlayground] = useState(false);
-  const [showDebug, setShowDebug] = useState(false);
-  const [debugInfo, setDebugInfo] = useState<{
-    startedAt?: number;
-    finishedAt?: number;
-    durationMs?: number;
-    ragSettingsLoad?: { ok: boolean; error?: string };
-    codeSettingsLoad?: { ok: boolean; error?: string };
-    baseUrl?: string;
-  }>({});
 
   const { showToast } = useToast();
   const { projectsEnabled } = useSettings();
@@ -64,8 +71,6 @@ export const SettingsPage = () => {
 
   // Load settings on mount
   useEffect(() => {
-    // Intentionally not adding loadSettings to deps to avoid re-runs
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     loadSettings();
   }, []);
 
@@ -73,58 +78,15 @@ export const SettingsPage = () => {
     try {
       setLoading(true);
       setError(null);
-      const startedAt = Date.now();
-      setDebugInfo(prev => ({ ...prev, startedAt }));
-      console.group("[Settings] loadSettings");
-      console.info("Retry:", isRetry);
-      console.time("loadSettings");
 
       // Load RAG settings
-      let ragSettingsOk = true;
-      let ragSettingsErr: string | undefined;
-      let ragSettingsData: RagSettings | undefined;
-      try {
-        ragSettingsData = await credentialsService.getRagSettings();
-      } catch (e: any) {
-        ragSettingsOk = false;
-        ragSettingsErr = e?.message || String(e);
-        console.error("[Settings] getRagSettings error:", e);
-      }
-      if (ragSettingsData) {
-        setRagSettings(ragSettingsData);
-      }
-      setDebugInfo(prev => ({
-        ...prev,
-        ragSettingsLoad: { ok: ragSettingsOk, error: ragSettingsErr },
-        baseUrl: (credentialsService as any)["baseUrl"],
-      }));
-      console.debug("[Settings] RAG settings:", ragSettingsData);
+      const ragSettingsData = await credentialsService.getRagSettings();
+      setRagSettings(ragSettingsData);
 
       // Load Code Extraction settings
-      let codeOk = true;
-      let codeErr: string | undefined;
-      let codeExtractionSettingsData: CodeExtractionSettingsType | undefined;
-      try {
-        codeExtractionSettingsData = await credentialsService.getCodeExtractionSettings();
-      } catch (e: any) {
-        codeOk = false;
-        codeErr = e?.message || String(e);
-        console.error("[Settings] getCodeExtractionSettings error:", e);
-      }
-      if (codeExtractionSettingsData) {
-        setCodeExtractionSettings(codeExtractionSettingsData);
-      }
-      const finishedAt = Date.now();
-      const durationMs = finishedAt - startedAt;
-      setDebugInfo(prev => ({
-        ...prev,
-        codeSettingsLoad: { ok: codeOk, error: codeErr },
-        finishedAt,
-        durationMs,
-      }));
-      console.debug("[Settings] Code Extraction settings:", codeExtractionSettingsData);
-      console.timeEnd("loadSettings");
-      console.groupEnd();
+      const codeExtractionSettingsData =
+        await credentialsService.getCodeExtractionSettings();
+      setCodeExtractionSettings(codeExtractionSettingsData);
     } catch (err) {
       setError("Failed to load settings");
       console.error(err);
@@ -149,6 +111,9 @@ export const SettingsPage = () => {
       variants={containerVariants}
       className="w-full"
     >
+      {/* Update Banner */}
+      <UpdateBanner />
+
       {/* Header */}
       <motion.div
         className="flex justify-between items-center mb-8"
@@ -179,6 +144,33 @@ export const SettingsPage = () => {
               <FeaturesSection />
             </CollapsibleSettingsCard>
           </motion.div>
+
+          {/* Version Status */}
+          <motion.div variants={itemVariants}>
+            <CollapsibleSettingsCard
+              title="Version & Updates"
+              icon={Info}
+              accentColor="blue"
+              storageKey="version-status"
+              defaultExpanded={true}
+            >
+              <VersionStatusCard />
+            </CollapsibleSettingsCard>
+          </motion.div>
+
+          {/* Migration Status */}
+          <motion.div variants={itemVariants}>
+            <CollapsibleSettingsCard
+              title="Database Migrations"
+              icon={Database}
+              accentColor="purple"
+              storageKey="migration-status"
+              defaultExpanded={false}
+            >
+              <MigrationStatusCard />
+            </CollapsibleSettingsCard>
+          </motion.div>
+
           {projectsEnabled && (
             <motion.div variants={itemVariants}>
               <CollapsibleSettingsCard
@@ -238,9 +230,11 @@ export const SettingsPage = () => {
 
           {/* Bug Report Section */}
           <motion.div variants={itemVariants}>
-              <CollapsibleSettingsCard
+            <CollapsibleSettingsCard
               title="Bug Reporting"
               icon={Bug}
+              iconColor="text-red-500"
+              borderColor="border-red-200 dark:border-red-800"
               defaultExpanded={false}
             >
               <div className="space-y-4">
@@ -279,43 +273,6 @@ export const SettingsPage = () => {
           </motion.div>
         </button>
       </motion.div>
-
-      {/* Debug toggle */}
-      <div className="mt-4 flex justify-center">
-        <button
-          onClick={() => setShowDebug(!showDebug)}
-          className="px-3 py-1 text-xs rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
-          title="Toggle Settings Debug Panel"
-        >
-          {showDebug ? "Hide Debug" : "Show Debug"}
-        </button>
-      </div>
-
-      {/* Debug panel */}
-      {showDebug && (
-        <div className="mt-4 p-4 rounded-lg border border-yellow-300/40 bg-yellow-50 dark:bg-yellow-900/10 dark:border-yellow-800/50">
-          <div className="text-xs text-gray-800 dark:text-gray-200 space-y-2">
-            <div className="font-semibold">Settings Debug</div>
-            <div>API Base URL: <code className="font-mono">{debugInfo.baseUrl || "(unknown)"}</code></div>
-            <div>Started: {debugInfo.startedAt ? new Date(debugInfo.startedAt).toLocaleTimeString() : "-"}</div>
-            <div>Finished: {debugInfo.finishedAt ? new Date(debugInfo.finishedAt).toLocaleTimeString() : "-"}</div>
-            <div>Duration: {debugInfo.durationMs ?? "-"} ms</div>
-            <div>RAG Settings Load: {debugInfo.ragSettingsLoad?.ok ? "ok" : `error: ${debugInfo.ragSettingsLoad?.error}`}</div>
-            <div>Code Settings Load: {debugInfo.codeSettingsLoad?.ok ? "ok" : `error: ${debugInfo.codeSettingsLoad?.error}`}</div>
-            <details>
-              <summary className="cursor-pointer">RAG Settings (current)</summary>
-              <pre className="mt-1 overflow-auto max-h-64 text-[10px] whitespace-pre-wrap">{JSON.stringify(ragSettings, null, 2)}</pre>
-            </details>
-            <details>
-              <summary className="cursor-pointer">Code Extraction Settings (current)</summary>
-              <pre className="mt-1 overflow-auto max-h-64 text-[10px] whitespace-pre-wrap">{JSON.stringify(codeExtractionSettings, null, 2)}</pre>
-            </details>
-            {error && (
-              <div className="text-red-600 dark:text-red-400">Last Error: {error}</div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Button Playground - Collapsible */}
       <AnimatePresence>
