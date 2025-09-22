@@ -105,9 +105,38 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ selectedItem, onCo
         </Button>
       </div>
 
-      {/* Content Body */}
-      <div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin">
-        <div className="p-6">
+      {/* Main Content Area with Metadata Panel */}
+      <div className="flex-1 flex flex-col min-h-0">
+        {/* Metadata Section - Always visible as collapsible */}
+        {selectedItem.metadata && Object.keys(selectedItem.metadata).length > 0 && (
+          <div className="border-b border-white/10 flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowMetadata(!showMetadata)}
+              className="w-full px-4 py-3 flex items-center gap-2 text-sm font-medium text-cyan-400 hover:bg-white/5 transition-colors text-left"
+            >
+              {showMetadata ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+              <Info className="w-4 h-4" />
+              Metadata
+              <span className="ml-auto text-xs text-gray-500">
+                {Object.keys(selectedItem.metadata).length} properties
+              </span>
+            </button>
+
+            {showMetadata && (
+              <div className="px-4 pb-4">
+                <div className="bg-black/40 border border-white/10 rounded-lg p-4 max-h-48 overflow-y-auto">
+                  <pre className="text-xs text-gray-400 font-mono whitespace-pre-wrap overflow-x-auto">
+                    {JSON.stringify(selectedItem.metadata, null, 2)}
+                  </pre>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Content Body */}
+        <div className="flex-1 overflow-y-auto min-h-0 p-6 scrollbar-thin">
           {selectedItem.type === "document" ? (
             <div className="prose prose-invert max-w-none">
               <pre className="whitespace-pre-wrap text-sm text-gray-300 font-sans leading-relaxed">
@@ -121,29 +150,6 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ selectedItem, onCo
                   {selectedItem.content || "// No code content available"}
                 </code>
               </pre>
-            </div>
-          )}
-
-          {/* Metadata Section */}
-          {selectedItem.metadata && Object.keys(selectedItem.metadata).length > 0 && (
-            <div className="mt-6">
-              <button
-                type="button"
-                onClick={() => setShowMetadata(!showMetadata)}
-                className="flex items-center gap-2 text-sm font-medium text-cyan-400 hover:text-cyan-300 transition-colors mb-3"
-              >
-                {showMetadata ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                <Info className="w-4 h-4" />
-                Metadata
-              </button>
-
-              {showMetadata && (
-                <div className="bg-black/40 border border-white/10 rounded-lg p-4">
-                  <pre className="text-xs text-gray-400 font-mono whitespace-pre-wrap overflow-x-auto">
-                    {JSON.stringify(selectedItem.metadata, null, 2)}
-                  </pre>
-                </div>
-              )}
             </div>
           )}
         </div>
