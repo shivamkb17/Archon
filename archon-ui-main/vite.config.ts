@@ -2,6 +2,7 @@
 import path from "path";
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 import { exec } from 'child_process';
 import { readFile } from 'fs/promises';
 import { existsSync, mkdirSync } from 'fs';
@@ -25,6 +26,7 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
   
   return {
     plugins: [
+      tailwindcss(),
       react(),
       // Custom plugin to add test endpoint
       {

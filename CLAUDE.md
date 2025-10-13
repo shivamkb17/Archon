@@ -209,11 +209,15 @@ See `python/.env.example` for complete list
 
 ### Add a new UI component in features directory
 
+**IMPORTANT**: Review UI design standards in `@PRPs/ai_docs/UI_STANDARDS.md` before creating UI components.
+
 1. Use Radix UI primitives from `src/features/ui/primitives/`
 2. Create component in relevant feature folder under `src/features/[feature]/components/`
 3. Define types in `src/features/[feature]/types/`
 4. Use TanStack Query hook from `src/features/[feature]/hooks/`
 5. Apply Tron-inspired glassmorphism styling with Tailwind
+6. Follow responsive design patterns (mobile-first with breakpoints)
+7. Ensure no dynamic Tailwind class construction (see UI_STANDARDS.md Section 2)
 
 ### Add or modify MCP tools
 
@@ -268,6 +272,8 @@ When connected to Claude/Cursor/Windsurf, the following tools are available:
 - `archon:rag_search_knowledge_base` - Search knowledge base for relevant content
 - `archon:rag_search_code_examples` - Find code snippets in the knowledge base
 - `archon:rag_get_available_sources` - List available knowledge sources
+- `archon:rag_list_pages_for_source` - List all pages for a given source (browse documentation structure)
+- `archon:rag_read_full_page` - Retrieve full page content by page_id or URL
 
 ### Project Management
 

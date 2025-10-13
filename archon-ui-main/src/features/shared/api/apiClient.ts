@@ -60,10 +60,10 @@ export async function callAPIWithETag<T = unknown>(endpoint: string, options: Re
 
     // Only set Content-Type for requests that have a body (POST, PUT, PATCH, etc.)
     // GET and DELETE requests should not have Content-Type header
-    const method = options.method?.toUpperCase() || 'GET';
+    const method = options.method?.toUpperCase() || "GET";
     const hasBody = options.body !== undefined && options.body !== null;
-    if (hasBody && !headers['Content-Type']) {
-      headers['Content-Type'] = 'application/json';
+    if (hasBody && !headers["Content-Type"]) {
+      headers["Content-Type"] = "application/json";
     }
 
     // Make the request with timeout

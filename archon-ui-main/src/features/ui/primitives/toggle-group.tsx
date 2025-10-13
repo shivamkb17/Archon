@@ -2,10 +2,14 @@ import * as ToggleGroupPrimitive from "@radix-ui/react-toggle-group";
 import React from "react";
 import { cn, glassmorphism } from "./styles";
 
-export interface ToggleGroupProps extends React.ComponentPropsWithoutRef<typeof ToggleGroupPrimitive.Root> {
+type ToggleGroupProps = (
+  | ToggleGroupPrimitive.ToggleGroupSingleProps
+  | ToggleGroupPrimitive.ToggleGroupMultipleProps
+) & {
   variant?: "subtle" | "solid";
   size?: "sm" | "md";
-}
+  className?: string;
+};
 
 export const ToggleGroup = React.forwardRef<React.ElementRef<typeof ToggleGroupPrimitive.Root>, ToggleGroupProps>(
   ({ className, variant = "subtle", size = "sm", ...props }, ref) => {

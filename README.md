@@ -3,6 +3,10 @@
 </p>
 
 <p align="center">
+   <a href="https://trendshift.io/repositories/13964" target="_blank"><img src="https://trendshift.io/api/badge/repositories/13964" alt="coleam00%2FArchon | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
+</p>
+
+<p align="center">
   <em>Power up your AI coding assistants with your own custom knowledge base and task management as an MCP server</em>
 </p>
 
@@ -41,6 +45,16 @@ This new vision for Archon replaces the old one (the agenteer). Archon used to b
 - **[Dynamous AI Mastery](https://dynamous.ai)** - The birthplace of Archon - come join a vibrant community of other early AI adopters all helping each other transform their careers and businesses!
 
 ## Quick Start
+
+<p align="center">
+  <a href="https://youtu.be/DMXyDpnzNpY">
+    <img src="https://img.youtube.com/vi/DMXyDpnzNpY/maxresdefault.jpg" alt="Archon Setup Tutorial" width="640" />
+  </a>
+  <br/>
+  <em>📺 Click to watch the setup tutorial on YouTube</em>
+  <br/>
+  <a href="./archon-example-workflow">-> Example AI coding workflow in the video <-</a>
+</p>
 
 ### Prerequisites
 

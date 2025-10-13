@@ -177,6 +177,7 @@ class RagQueryRequest(BaseModel):
     query: str
     source: str | None = None
     match_count: int = 5
+    return_mode: str = "chunks"  # "chunks" or "pages"
 
 
 @router.get("/crawl-progress/{progress_id}")
@@ -1116,10 +1117,13 @@ async def perform_rag_query(request: RagQueryRequest):
         raise HTTPException(status_code=422, detail="Query cannot be empty")
 
     try:
-        # Use RAGService for RAG query
+        # Use RAGService for unified RAG query with return_mode support
         search_service = RAGService(get_supabase_client())
         success, result = await search_service.perform_rag_query(
-            query=request.query, source=request.source, match_count=request.match_count
+            query=request.query,
+            source=request.source,
+            match_count=request.match_count,
+            return_mode=request.return_mode
         )
 
         if success:
@@ -1288,7 +1292,7 @@ async def stop_crawl_task(progress_id: str):
 
         found = False
         # Step 1: Cancel the orchestration service
-        orchestration = get_active_orchestration(progress_id)
+        orchestration = await get_active_orchestration(progress_id)
         if orchestration:
             orchestration.cancel()
             found = True
@@ -1306,7 +1310,7 @@ async def stop_crawl_task(progress_id: str):
             found = True
 
         # Step 3: Remove from active orchestrations registry
-        unregister_orchestration(progress_id)
+        await unregister_orchestration(progress_id)
 
         # Step 4: Update progress tracker to reflect cancellation (only if we found and cancelled something)
         if found:

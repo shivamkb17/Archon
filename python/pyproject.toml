@@ -39,7 +39,7 @@ server = [
     "python-multipart>=0.0.20",
     "watchfiles>=0.18",
     # Web crawling
-    "crawl4ai==0.6.2",
+    "crawl4ai==0.7.4",
     # Database and storage
     "supabase==2.15.1",
     "asyncpg>=0.29.0",
@@ -104,7 +104,7 @@ all = [
     "uvicorn>=0.24.0",
     "python-multipart>=0.0.20",
     "watchfiles>=0.18",
-    "crawl4ai==0.6.2",
+    "crawl4ai==0.7.4",
     "supabase==2.15.1",
     "asyncpg>=0.29.0",
     "openai==1.71.0",

@@ -365,12 +365,21 @@ Test these things using both the UI and the MCP server. This process will be sim
    archon-ui-main/src/pages/YourPage.tsx
    ```
 
-2. **Testing Your Changes**
+2. **UI Design Standards**
+
+   Before creating or modifying UI components, review the design standards:
+   - **UI Standards**: `PRPs/ai_docs/UI_STANDARDS.md` - Complete Tailwind v4, Radix, and responsive design patterns
+   - **Style Guide**: Enable in Settings → scroll to "Feature Flags" → Enable "Style Guide Page"
+     - Access at http://localhost:3737/style-guide
+     - View all available primitives, colors, layouts, and component patterns
+   - **UI Consistency Review**: Run `/archon:archon-ui-consistency-review <path>` to automatically check your components for compliance
+
+3. **Testing Your Changes**
 
    ```bash
    # Using Make (if installed)
    make test-fe
-   
+
    # Or manually
    cd archon-ui-main && npm run test
 
@@ -381,11 +390,11 @@ Test these things using both the UI and the MCP server. This process will be sim
    npm run test:ui
    ```
 
-3. **Development Server**
+4. **Development Server**
    ```bash
    # Using Make for hybrid mode (if installed)
    make dev  # Backend in Docker, frontend local
-   
+
    # Or manually for faster iteration
    cd archon-ui-main && npm run dev
    # Still connects to Docker backend services

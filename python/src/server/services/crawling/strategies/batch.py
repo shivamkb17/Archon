@@ -38,6 +38,7 @@ class BatchCrawlStrategy:
         max_concurrent: int | None = None,
         progress_callback: Callable[..., Awaitable[None]] | None = None,
         cancellation_check: Callable[[], None] | None = None,
+        link_text_fallbacks: dict[str, str] | None = None,
     ) -> list[dict[str, Any]]:
         """
         Batch crawl multiple URLs in parallel with progress reporting.
@@ -49,6 +50,7 @@ class BatchCrawlStrategy:
             max_concurrent: Maximum concurrent crawls
             progress_callback: Optional callback for progress updates
             cancellation_check: Optional function to check for cancellation
+            link_text_fallbacks: Optional dict mapping URLs to link text for title fallback
 
         Returns:
             List of crawl results
@@ -234,10 +236,30 @@ class BatchCrawlStrategy:
                 if result.success and result.markdown and result.markdown.fit_markdown:
                     # Map back to original URL
                     original_url = url_mapping.get(result.url, result.url)
+
+                    # Extract title from HTML <title> tag
+                    title = "Untitled"
+                    if result.html:
+                        import re
+                        title_match = re.search(r'<title[^>]*>(.*?)</title>', result.html, re.IGNORECASE | re.DOTALL)
+                        if title_match:
+                            extracted_title = title_match.group(1).strip()
+                            # Clean up HTML entities
+                            extracted_title = extracted_title.replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>').replace('&quot;', '"')
+                            if extracted_title:
+                                title = extracted_title
+
+                    # Fallback to link text if HTML title extraction failed
+                    if title == "Untitled" and link_text_fallbacks:
+                        fallback_text = link_text_fallbacks.get(original_url, "")
+                        if fallback_text:
+                            title = fallback_text
+
                     successful_results.append({
                         "url": original_url,
                         "markdown": result.markdown.fit_markdown,
                         "html": result.html,  # Use raw HTML
+                        "title": title,
                     })
                 else:
                     logger.warning(

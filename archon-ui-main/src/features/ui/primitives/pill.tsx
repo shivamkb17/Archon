@@ -1,7 +1,7 @@
 import type React from "react";
 import { cn } from "./styles";
 
-export type PillColor = "blue" | "orange" | "cyan" | "purple" | "pink" | "emerald" | "gray";
+export type PillColor = "blue" | "orange" | "cyan" | "purple" | "pink" | "green" | "gray";
 
 export interface StatPillProps extends React.HTMLAttributes<HTMLDivElement> {
   color?: PillColor;
@@ -47,11 +47,11 @@ const COLOR_MAP: Record<PillColor, { bg: string; text: string; border: string; g
     border: "border-pink-300/60 dark:border-purple-500/50",
     glow: "shadow-[0_0_10px_rgba(236,72,153,0.35)]",
   },
-  emerald: {
-    bg: "from-emerald-100/80 to-white/60 dark:from-emerald-500/20 dark:to-emerald-500/10",
-    text: "text-emerald-700 dark:text-emerald-200",
-    border: "border-emerald-300/60 dark:border-emerald-500/50",
-    glow: "shadow-[0_0_10px_rgba(16,185,129,0.35)]",
+  green: {
+    bg: "from-green-100/80 to-white/60 dark:from-green-500/20 dark:to-green-500/10",
+    text: "text-green-700 dark:text-green-200",
+    border: "border-green-300/60 dark:border-green-500/50",
+    glow: "shadow-[0_0_10px_rgba(34,197,94,0.35)]",
   },
   gray: {
     bg: "from-gray-100/80 to-white/60 dark:from-gray-500/20 dark:to-gray-500/10",
